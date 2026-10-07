@@ -1,0 +1,747 @@
+#pragma once
+
+#include <qqmlcontext.h>
+
+#include <QObject>
+#include <QQmlEngine>
+
+#include "waveform/renderers/allshader/waveformrenderersignalbase.h"
+#include "waveform/renderers/waveformrendererabstract.h"
+#include "waveform/renderers/waveformwidgetrenderer.h"
+#include "waveform/widgets/allshader/waveformwidget.h"
+
+#ifdef QT_OPENGL_ES_2
+#define USE_OPENGLES true
+#else
+#define USE_OPENGLES false
+#endif
+
+class WaveformWidgetRenderer;
+
+namespace allshaders {
+class WaveformRendererEndOfTrack;
+class WaveformRendererPreroll;
+class WaveformRendererRGB;
+class WaveformRenderBeat;
+} // namespace allshaders
+
+namespace mixxx {
+namespace qml {
+
+using WaveformRendererPositionSource = ::WaveformRendererAbstract::PositionSource;
+using WaveformRendererSignalBaseOptions = WaveformRendererSignalBase::Options;
+
+class QmlWaveformRendererFactory : public QObject {
+    Q_OBJECT
+    Q_PROPERTY(bool enabled READ isEnabled WRITE setEnabled NOTIFY enabledChanged)
+    Q_PROPERTY(WaveformRendererAbstract::PositionSource position MEMBER
+                    m_position NOTIFY positionChanged)
+    QML_ANONYMOUS
+  public:
+    struct Renderer {
+        ::WaveformRendererAbstract* renderer{nullptr};
+        std::unique_ptr<rendergraph::BaseNode> node{nullptr};
+    };
+
+    virtual bool isSupported() const {
+        return true;
+    }
+    bool isEnabled() const {
+        return m_enabled;
+    }
+
+    void setEnabled(bool enabled) {
+        if (m_enabled == enabled) {
+            return;
+        }
+        m_enabled = enabled;
+        emit enabledChanged(m_enabled);
+    }
+
+    virtual Renderer create(WaveformWidgetRenderer* waveformWidget,
+            mixxx::qml::WaveformRendererSignalBaseOptions options) const = 0;
+
+  signals:
+    void positionChanged(WaveformRendererAbstract::PositionSource);
+    void enabledChanged(bool);
+
+  protected:
+    WaveformRendererPositionSource m_position{::WaveformRendererAbstract::Play};
+    bool m_enabled{true};
+};
+
+class QmlWaveformRendererEndOfTrack
+        : public QmlWaveformRendererFactory {
+    Q_OBJECT
+    Q_PROPERTY(QColor color MEMBER m_color NOTIFY colorChanged REQUIRED)
+    Q_PROPERTY(int endOfTrackWarningTime MEMBER m_endOfTrackWarningTime NOTIFY
+                    endOfTrackWarningTimeChanged REQUIRED)
+    QML_NAMED_ELEMENT(WaveformRendererEndOfTrack)
+
+  public:
+    Renderer create(WaveformWidgetRenderer* waveformWidget,
+            mixxx::qml::WaveformRendererSignalBaseOptions options)
+            const override;
+
+  signals:
+    void colorChanged(const QColor&);
+    void endOfTrackWarningTimeChanged(int m_endOfTrackWarningTime);
+
+  private:
+    QColor m_color;
+    int m_endOfTrackWarningTime;
+};
+
+class QmlWaveformRendererPreroll
+        : public QmlWaveformRendererFactory {
+    Q_OBJECT
+    Q_PROPERTY(QColor color MEMBER m_color NOTIFY colorChanged REQUIRED)
+    QML_NAMED_ELEMENT(WaveformRendererPreroll)
+
+  public:
+    Renderer create(WaveformWidgetRenderer* waveformWidget,
+            mixxx::qml::WaveformRendererSignalBaseOptions options)
+            const override;
+  signals:
+    void colorChanged(const QColor&);
+
+  private:
+    QColor m_color;
+    ::WaveformRendererAbstract::PositionSource m_position{::WaveformRendererAbstract::Play};
+};
+
+class QmlWaveformRendererSignal
+        : public QmlWaveformRendererFactory {
+    Q_OBJECT
+    Q_PROPERTY(bool ignoreStem MEMBER m_ignoreStem NOTIFY ignoreStemChanged)
+    Q_PROPERTY(QColor axesColor MEMBER m_axesColor NOTIFY axesColorChanged REQUIRED)
+    Q_PROPERTY(QColor lowColor MEMBER m_lowColor NOTIFY lowColorChanged REQUIRED)
+    Q_PROPERTY(QColor midColor MEMBER m_midColor NOTIFY midColorChanged REQUIRED)
+    Q_PROPERTY(QColor highColor MEMBER m_highColor NOTIFY highColorChanged REQUIRED)
+    Q_PROPERTY(double gainAll READ gainAll WRITE setGainAll NOTIFY gainAllChanged REQUIRED)
+    Q_PROPERTY(double gainLow READ gainLow WRITE setGainLow NOTIFY gainLowChanged REQUIRED)
+    Q_PROPERTY(double gainMid READ gainMid WRITE setGainMid NOTIFY gainMidChanged REQUIRED)
+    Q_PROPERTY(double gainHigh READ gainHigh WRITE setGainHigh NOTIFY gainHighChanged REQUIRED)
+    Q_PROPERTY(WaveformRendererSignalBaseOptions supportedOptions MEMBER
+                    m_supportedOption CONSTANT)
+    QML_ANONYMOUS
+
+  public:
+    QmlWaveformRendererSignal(WaveformWidgetType::Type type)
+            : m_supportedOption(allshader::WaveformWidget::supportedOptions(type, USE_OPENGLES)) {
+    }
+
+  protected:
+    void setup(allshader::WaveformRendererSignalBase* renderer) const;
+
+    double gainAll() const {
+        return m_gainAll;
+    }
+    double gainLow() const {
+        return m_gainLow;
+    }
+    double gainMid() const {
+        return m_gainMid;
+    }
+    double gainHigh() const {
+        return m_gainHigh;
+    }
+    void setGainAll(double value) {
+        if (m_gainAll == value) {
+            return;
+        }
+        m_gainAll = value;
+        emit gainAllChanged(value);
+    }
+    void setGainLow(double value) {
+        if (m_gainLow == value) {
+            return;
+        }
+        m_gainLow = value;
+        emit gainLowChanged(value);
+    }
+    void setGainMid(double value) {
+        if (m_gainMid == value) {
+            return;
+        }
+        m_gainMid = value;
+        emit gainMidChanged(value);
+    }
+    void setGainHigh(double value) {
+        if (m_gainHigh == value) {
+            return;
+        }
+        m_gainHigh = value;
+        emit gainHighChanged(value);
+    }
+
+    WaveformRendererSignalBaseOptions m_supportedOption;
+
+  signals:
+    void axesColorChanged(const QColor&);
+    void lowColorChanged(const QColor&);
+    void midColorChanged(const QColor&);
+    void highColorChanged(const QColor&);
+    void gainAllChanged(double);
+    void gainLowChanged(double);
+    void gainMidChanged(double);
+    void gainHighChanged(double);
+    void ignoreStemChanged(bool);
+
+  protected:
+    QColor m_axesColor;
+    QColor m_lowColor;
+    QColor m_midColor;
+    QColor m_highColor;
+
+    double m_gainAll{1.0};
+    double m_gainLow{1.0};
+    double m_gainMid{1.0};
+    double m_gainHigh{1.0};
+
+    bool m_ignoreStem{false};
+
+    ::WaveformRendererAbstract::PositionSource m_position{::WaveformRendererAbstract::Play};
+};
+
+class QmlWaveformRendererRGB
+        : public QmlWaveformRendererSignal {
+    Q_OBJECT
+    QML_NAMED_ELEMENT(WaveformRendererRGB)
+
+  public:
+    QmlWaveformRendererRGB()
+            : QmlWaveformRendererSignal(WaveformWidgetType::RGB) {
+    }
+    Renderer create(WaveformWidgetRenderer* waveformWidget,
+            mixxx::qml::WaveformRendererSignalBaseOptions options)
+            const override;
+};
+
+class QmlWaveformRendererFiltered
+        : public QmlWaveformRendererSignal {
+    Q_OBJECT
+    Q_PROPERTY(bool stacked MEMBER m_stacked FINAL)
+
+    QML_NAMED_ELEMENT(WaveformRendererFiltered)
+
+  public:
+    QmlWaveformRendererFiltered()
+            : QmlWaveformRendererSignal(WaveformWidgetType::Filtered) {
+    }
+    Renderer create(WaveformWidgetRenderer* waveformWidget,
+            mixxx::qml::WaveformRendererSignalBaseOptions options)
+            const override;
+
+  private:
+    bool m_stacked{false};
+};
+
+class QmlWaveformRendererHSV
+        : public QmlWaveformRendererFactory {
+    Q_OBJECT
+    Q_PROPERTY(bool ignoreStem MEMBER m_ignoreStem NOTIFY ignoreStemChanged)
+    Q_PROPERTY(QColor axesColor MEMBER m_axesColor NOTIFY axesColorChanged REQUIRED)
+    Q_PROPERTY(QColor color MEMBER m_color NOTIFY colorChanged REQUIRED)
+    Q_PROPERTY(double gainAll READ gainAll WRITE setGainAll NOTIFY gainAllChanged REQUIRED)
+    Q_PROPERTY(double gainLow READ gainLow WRITE setGainLow NOTIFY gainLowChanged REQUIRED)
+    Q_PROPERTY(double gainMid READ gainMid WRITE setGainMid NOTIFY gainMidChanged REQUIRED)
+    Q_PROPERTY(double gainHigh READ gainHigh WRITE setGainHigh NOTIFY gainHighChanged REQUIRED)
+    Q_PROPERTY(WaveformRendererSignalBaseOptions supportedOptions MEMBER
+                    m_supportedOption CONSTANT)
+    QML_NAMED_ELEMENT(WaveformRendererHSV)
+
+  public:
+    QmlWaveformRendererHSV()
+            : m_supportedOption(allshader::WaveformWidget::supportedOptions(
+                      WaveformWidgetType::HSV, USE_OPENGLES)) {
+    }
+    Renderer create(WaveformWidgetRenderer* waveformWidget,
+            mixxx::qml::WaveformRendererSignalBaseOptions options)
+            const override;
+  signals:
+    void axesColorChanged(const QColor&);
+    void colorChanged(const QColor&);
+    void ignoreStemChanged(bool);
+    void gainAllChanged(double);
+    void gainLowChanged(double);
+    void gainMidChanged(double);
+    void gainHighChanged(double);
+    void optionsChanged(mixxx::qml::WaveformRendererSignalBaseOptions);
+
+  private:
+    double gainAll() const {
+        return m_gainAll;
+    }
+    double gainLow() const {
+        return m_gainLow;
+    }
+    double gainMid() const {
+        return m_gainMid;
+    }
+    double gainHigh() const {
+        return m_gainHigh;
+    }
+    void setGainAll(double value) {
+        if (m_gainAll == value) {
+            return;
+        }
+        m_gainAll = value;
+        emit gainAllChanged(value);
+    }
+    void setGainLow(double value) {
+        if (m_gainLow == value) {
+            return;
+        }
+        m_gainLow = value;
+        emit gainLowChanged(value);
+    }
+    void setGainMid(double value) {
+        if (m_gainMid == value) {
+            return;
+        }
+        m_gainMid = value;
+        emit gainMidChanged(value);
+    }
+    void setGainHigh(double value) {
+        if (m_gainHigh == value) {
+            return;
+        }
+        m_gainHigh = value;
+        emit gainHighChanged(value);
+    }
+
+    QColor m_axesColor;
+    QColor m_color;
+
+    double m_gainAll{1.0};
+    double m_gainLow{1.0};
+    double m_gainMid{1.0};
+    double m_gainHigh{1.0};
+
+    bool m_ignoreStem{false};
+
+    WaveformRendererSignalBaseOptions m_supportedOption;
+};
+
+class QmlWaveformRendererSimple
+        : public QmlWaveformRendererFactory {
+    Q_OBJECT
+    Q_PROPERTY(bool ignoreStem MEMBER m_ignoreStem NOTIFY ignoreStemChanged)
+    Q_PROPERTY(QColor axesColor MEMBER m_axesColor NOTIFY axesColorChanged REQUIRED)
+    Q_PROPERTY(QColor color MEMBER m_color NOTIFY colorChanged REQUIRED)
+    Q_PROPERTY(double gain READ gain WRITE setGain NOTIFY gainChanged REQUIRED)
+    Q_PROPERTY(WaveformRendererSignalBaseOptions supportedOptions MEMBER
+                    m_supportedOption CONSTANT)
+    QML_NAMED_ELEMENT(WaveformRendererSimple)
+
+  public:
+    QmlWaveformRendererSimple()
+            : m_supportedOption(allshader::WaveformWidget::supportedOptions(
+                      WaveformWidgetType::Simple, USE_OPENGLES)) {
+    }
+    Renderer create(WaveformWidgetRenderer* waveformWidget,
+            mixxx::qml::WaveformRendererSignalBaseOptions options)
+            const override;
+  signals:
+    void axesColorChanged(const QColor&);
+    void colorChanged(const QColor&);
+    void ignoreStemChanged(bool);
+    void gainChanged(double);
+    void optionsChanged(mixxx::qml::WaveformRendererSignalBaseOptions);
+
+  private:
+    double gain() const {
+        return m_gain;
+    }
+    void setGain(double value) {
+        if (m_gain == value) {
+            return;
+        }
+        m_gain = value;
+        emit gainChanged(value);
+    }
+
+    QColor m_axesColor;
+    QColor m_color;
+    double m_gain{1.0};
+    bool m_ignoreStem{false};
+
+    WaveformRendererSignalBaseOptions m_supportedOption;
+};
+
+class QmlWaveformRendererBeat
+        : public QmlWaveformRendererFactory {
+    Q_OBJECT
+    Q_PROPERTY(QColor color MEMBER m_color NOTIFY colorChanged REQUIRED)
+    QML_NAMED_ELEMENT(WaveformRendererBeat)
+
+  public:
+    Renderer create(WaveformWidgetRenderer* waveformWidget,
+            mixxx::qml::WaveformRendererSignalBaseOptions options)
+            const override;
+  signals:
+    void colorChanged(const QColor&);
+
+  private:
+    QColor m_color;
+    ::WaveformRendererAbstract::PositionSource m_position{::WaveformRendererAbstract::Play};
+};
+
+class QmlWaveformMarkRange : public QObject {
+    Q_OBJECT
+    Q_PROPERTY(QColor color MEMBER m_color NOTIFY colorChanged)
+    Q_PROPERTY(QColor disabledColor MEMBER m_disabledColor NOTIFY disabledColorChanged)
+    Q_PROPERTY(double opacity MEMBER m_opacity NOTIFY opacityChanged)
+    Q_PROPERTY(double disabledOpacity MEMBER m_disabledOpacity NOTIFY disabledOpacityChanged)
+    Q_PROPERTY(QColor durationTextColor MEMBER m_durationTextColor NOTIFY durationTextColorChanged)
+    Q_PROPERTY(QString startControl MEMBER m_startControl NOTIFY startControlChanged)
+    Q_PROPERTY(QString endControl MEMBER m_endControl NOTIFY endControlChanged)
+    Q_PROPERTY(QString enabledControl MEMBER m_enabledControl NOTIFY enabledControlChanged)
+    Q_PROPERTY(QString visibilityControl MEMBER m_visibilityControl NOTIFY visibilityControlChanged)
+    Q_PROPERTY(QString durationTextLocation MEMBER m_durationTextLocation NOTIFY
+                    durationTextLocationChanged)
+    QML_NAMED_ELEMENT(WaveformMarkRange)
+
+  public:
+    QColor color() const {
+        return m_color;
+    }
+
+    QColor disabledColor() const {
+        return m_disabledColor;
+    }
+
+    double opacity() const {
+        return m_opacity;
+    }
+
+    double disabledOpacity() const {
+        return m_disabledOpacity;
+    }
+
+    QColor durationTextColor() const {
+        return m_durationTextColor;
+    }
+
+    QString startControl() const {
+        return m_startControl;
+    }
+
+    QString endControl() const {
+        return m_endControl;
+    }
+
+    QString enabledControl() const {
+        return m_enabledControl;
+    }
+
+    QString visibilityControl() const {
+        return m_visibilityControl;
+    }
+
+    QString durationTextLocation() const {
+        return m_durationTextLocation;
+    }
+
+  signals:
+    void colorChanged(QColor color);
+    void disabledColorChanged(QColor disabledColor);
+    void opacityChanged(double opacity);
+    void disabledOpacityChanged(double disabledOpacity);
+    void durationTextColorChanged(QColor durationTextColor);
+    void startControlChanged(const QString& startControl);
+    void endControlChanged(const QString& endControl);
+    void enabledControlChanged(const QString& enabledControl);
+    void visibilityControlChanged(const QString& visibilityControl);
+    void durationTextLocationChanged(const QString& durationTextLocation);
+
+  private:
+    double m_opacity{0.5};
+    double m_disabledOpacity{0.5};
+    QColor m_color;
+    QColor m_disabledColor;
+    QColor m_durationTextColor;
+    QString m_startControl;
+    QString m_endControl;
+    QString m_enabledControl;
+    QString m_visibilityControl;
+    QString m_durationTextLocation;
+};
+
+class QmlWaveformMark : public QObject {
+    Q_OBJECT
+    Q_PROPERTY(QString control MEMBER m_control NOTIFY controlChanged)
+    Q_PROPERTY(QString visibilityControl MEMBER m_visibilityControl NOTIFY visibilityControlChanged)
+    Q_PROPERTY(QString color MEMBER m_color NOTIFY colorChanged)
+    Q_PROPERTY(QString textColor MEMBER m_textColor NOTIFY textColorChanged)
+    Q_PROPERTY(QString align MEMBER m_align NOTIFY alignChanged)
+    Q_PROPERTY(QString text MEMBER m_text NOTIFY textChanged)
+    Q_PROPERTY(QUrl pixmap MEMBER m_pixmap NOTIFY pixmapChanged)
+    Q_PROPERTY(QUrl icon MEMBER m_icon NOTIFY iconChanged)
+    Q_PROPERTY(QUrl endPixmap MEMBER m_endPixmap NOTIFY endPixmapChanged)
+    Q_PROPERTY(QUrl endIcon MEMBER m_endIcon NOTIFY endIconChanged)
+    Q_PROPERTY(float disabledOpacity MEMBER m_disabledOpacity NOTIFY disabledOpacityChanged)
+    Q_PROPERTY(float enabledOpacity MEMBER m_enabledOpacity NOTIFY enabledOpacityChanged)
+    QML_NAMED_ELEMENT(WaveformMark)
+  public:
+    QString control() const {
+        return m_control;
+    }
+    QString visibilityControl() const {
+        return m_visibilityControl;
+    }
+    QString color() const {
+        return m_color;
+    }
+    QString textColor() const {
+        return m_textColor;
+    }
+    QString align() const {
+        return m_align;
+    }
+    QString text() const {
+        return m_text;
+    }
+    QUrl pixmap() const {
+        return m_pixmap;
+    }
+    QUrl icon() const {
+        return m_icon;
+    }
+    QUrl endPixmap() const {
+        return m_endPixmap;
+    }
+    QUrl endIcon() const {
+        return m_endIcon;
+    }
+    float disabledOpacity() const {
+        return m_disabledOpacity;
+    }
+    float enabledOpacity() const {
+        return m_enabledOpacity;
+    }
+
+  signals:
+    void controlChanged(const QString& control);
+    void visibilityControlChanged(const QString& visibilityControl);
+    void colorChanged(const QString& color);
+    void textColorChanged(const QString& textColor);
+    void alignChanged(const QString& align);
+    void textChanged(const QString& text);
+    void pixmapChanged(const QUrl& pixmap);
+    void iconChanged(const QUrl& icon);
+    void endPixmapChanged(const QUrl& pixmap);
+    void endIconChanged(const QUrl& icon);
+    void disabledOpacityChanged(float opacity);
+    void enabledOpacityChanged(float opacity);
+
+  private:
+    QString m_control;
+    QString m_visibilityControl;
+    QString m_color;
+    QString m_textColor;
+    QString m_align;
+    QString m_text;
+    QUrl m_pixmap;
+    QUrl m_icon;
+    QUrl m_endPixmap;
+    QUrl m_endIcon;
+    float m_disabledOpacity{1.0f};
+    float m_enabledOpacity{1.0f};
+};
+
+class QmlWaveformUntilMark : public QObject {
+    Q_OBJECT
+    Q_PROPERTY(bool showTime MEMBER m_showTime NOTIFY showTimeChanged)
+    Q_PROPERTY(bool showBeats MEMBER m_showBeats NOTIFY showBeatsChanged)
+    Q_PROPERTY(Qt::Alignment align MEMBER m_align NOTIFY alignChanged)
+    Q_PROPERTY(int textSize MEMBER m_textSize NOTIFY textSizeChanged)
+    Q_PROPERTY(float textHeightLimit READ textHeightLimit WRITE setTextHeightLimit
+                    NOTIFY textHeightLimitChanged)
+    Q_PROPERTY(double defaultNextMarkPosition MEMBER m_defaultNextMarkPosition
+                    NOTIFY defaultNextMarkPositionChanged)
+
+    QML_NAMED_ELEMENT(WaveformUntilMark)
+  public:
+    Q_ENUM(Qt::Alignment)
+
+    bool showTime() const {
+        return m_showTime;
+    }
+
+    bool showBeats() const {
+        return m_showBeats;
+    }
+
+    Qt::Alignment align() const {
+        return m_align;
+    }
+
+    int textSize() const {
+        return m_textSize;
+    }
+
+    float textHeightLimit() const {
+        return m_textHeightLimit;
+    }
+
+    void setTextHeightLimit(float value) {
+        if (qFuzzyCompare(m_textHeightLimit, value)) {
+            return;
+        }
+        m_textHeightLimit = value;
+        emit textHeightLimitChanged(value);
+    }
+
+    double defaultNextMarkPosition() const {
+        return m_defaultNextMarkPosition;
+    }
+
+  signals:
+    void showTimeChanged(bool);
+    void showBeatsChanged(bool);
+    void alignChanged(Qt::Alignment);
+    void textSizeChanged(int);
+    void textHeightLimitChanged(float);
+    void defaultNextMarkPositionChanged(double);
+
+  private:
+    bool m_showTime{false};
+    bool m_showBeats{false};
+    Qt::Alignment m_align{Qt::AlignVCenter};
+    int m_textSize{24};
+    float m_textHeightLimit{0.333f};
+    double m_defaultNextMarkPosition{-1.0};
+};
+
+class QmlWaveformRendererMarkRange
+        : public QmlWaveformRendererFactory {
+    Q_OBJECT
+    Q_PROPERTY(QQmlListProperty<mixxx::qml::QmlWaveformMarkRange> ranges READ ranges)
+    Q_CLASSINFO("DefaultProperty", "ranges")
+    QML_NAMED_ELEMENT(WaveformRendererMarkRange)
+
+  public:
+    QQmlListProperty<mixxx::qml::QmlWaveformMarkRange> ranges() {
+        return {this, &m_ranges};
+    }
+
+    Renderer create(WaveformWidgetRenderer* waveformWidget,
+            mixxx::qml::WaveformRendererSignalBaseOptions options)
+            const override;
+
+  private:
+    QList<mixxx::qml::QmlWaveformMarkRange*> m_ranges;
+};
+
+class QmlWaveformRendererStem
+        : public QmlWaveformRendererFactory {
+    Q_OBJECT
+    Q_PROPERTY(double gainAll READ gainAll WRITE setGainAll NOTIFY gainAllChanged)
+    Q_PROPERTY(double opacity MEMBER m_opacity NOTIFY opacityChanged)
+    Q_PROPERTY(double outlineOpacity MEMBER m_outlineOpacity NOTIFY
+                    outlineOpacityChanged)
+    Q_PROPERTY(bool reorderOnChange MEMBER m_reorderOnChange NOTIFY
+                    reorderOnChangeChanged)
+    Q_PROPERTY(bool splitStemTracks MEMBER m_splitStemTracks NOTIFY splitStemTracksChanged)
+    QML_NAMED_ELEMENT(WaveformRendererStem)
+
+  public:
+#ifdef __STEM__
+    Renderer create(WaveformWidgetRenderer* waveformWidget,
+            mixxx::qml::WaveformRendererSignalBaseOptions options)
+            const override;
+
+    bool isSupported() const override {
+        return true;
+    }
+#else
+    Renderer create(WaveformWidgetRenderer* waveformWidget,
+            mixxx::qml::WaveformRendererSignalBaseOptions options)
+            const override {
+        return Renderer{};
+    }
+
+    bool isSupported() const override {
+        return false;
+    }
+#endif
+
+  signals:
+    void gainAllChanged(double);
+    void opacityChanged(double);
+    void outlineOpacityChanged(double);
+    void reorderOnChangeChanged(bool);
+    void splitStemTracksChanged(bool);
+
+  private:
+    double gainAll() const {
+        return m_gainAll;
+    }
+    void setGainAll(double value) {
+        if (m_gainAll == value) {
+            return;
+        }
+        m_gainAll = value;
+        emit gainAllChanged(value);
+    }
+
+    double m_gainAll{1.0};
+    double m_opacity{0.75};
+    double m_outlineOpacity{0.15};
+    bool m_reorderOnChange{true};
+    bool m_splitStemTracks{false};
+
+    ::WaveformRendererAbstract::PositionSource m_position{::WaveformRendererAbstract::Play};
+};
+
+class QmlWaveformRendererMark
+        : public QmlWaveformRendererFactory {
+    Q_OBJECT
+    Q_PROPERTY(QQmlListProperty<mixxx::qml::QmlWaveformMark> marks READ marks)
+    Q_PROPERTY(QColor playMarkerColor MEMBER m_playMarkerColor NOTIFY playMarkerColorChanged)
+    Q_PROPERTY(QColor playMarkerBackground MEMBER m_playMarkerBackground NOTIFY
+                    playMarkerBackgroundChanged)
+    Q_PROPERTY(double playMarkerPosition MEMBER m_playMarkerPosition NOTIFY
+                    playMarkerPositionChanged)
+    Q_PROPERTY(QmlWaveformMark* defaultMark MEMBER m_defaultMark NOTIFY defaultMarkChanged)
+    Q_PROPERTY(QmlWaveformUntilMark* untilMark READ untilMark FINAL)
+    Q_CLASSINFO("DefaultProperty", "marks")
+    QML_NAMED_ELEMENT(WaveformRendererMark)
+
+  public:
+    QmlWaveformRendererMark();
+
+    QmlWaveformMark* defaultMark() const {
+        return m_defaultMark;
+    }
+
+    QmlWaveformUntilMark* untilMark() const {
+        return m_untilMark.get();
+    }
+
+    Renderer create(WaveformWidgetRenderer* waveformWidget,
+            mixxx::qml::WaveformRendererSignalBaseOptions options)
+            const override;
+
+    QQmlListProperty<mixxx::qml::QmlWaveformMark> marks() {
+        return {this, &m_marks};
+    }
+  signals:
+    void playMarkerColorChanged(const QColor&);
+    void playMarkerBackgroundChanged(const QColor&);
+    void playMarkerPositionChanged(double);
+    void defaultMarkChanged();
+
+  private:
+    QColor m_playMarkerColor;
+    QColor m_playMarkerBackground;
+    double m_playMarkerPosition;
+    QList<mixxx::qml::QmlWaveformMark*> m_marks;
+    mixxx::qml::QmlWaveformMark* m_defaultMark;
+    std::unique_ptr<mixxx::qml::QmlWaveformUntilMark> m_untilMark;
+};
+
+} // namespace qml
+} // namespace mixxx

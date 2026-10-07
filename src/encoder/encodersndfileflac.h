@@ -1,0 +1,30 @@
+#pragma once
+
+#ifdef _WIN32
+//Enable unicode in libsndfile on Windows
+//(sf_open uses UTF-8 otherwise)
+#include <windows.h>
+#define ENABLE_SNDFILE_WINDOWS_PROTOTYPES 1
+#endif
+
+#include "util/types.h"
+#include "encoder/encoderwave.h"
+
+class EncoderCallback;
+
+/// Encoder for FLAC using libsndfile
+class EncoderSndfileFlac : public EncoderWave {
+  public:
+    EncoderSndfileFlac(EncoderCallback* pCallback = nullptr);
+    ~EncoderSndfileFlac() override = default;
+
+    void setEncoderSettings(const EncoderSettings& settings) override;
+    void encodeBuffer(const CSAMPLE* samples, const std::size_t bufferSize) override;
+    void flush() override;
+
+  protected:
+    void initStream() override;
+  private:
+    double m_compression;
+    std::unique_ptr<int[]> m_pClampBuffer;
+};

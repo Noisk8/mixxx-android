@@ -1,0 +1,113 @@
+<!DOCTYPE template>
+<!--
+  Description:
+    A row of three buttons which set the deck's crossfader
+    orientation directly: L | M | R
+  Variables:
+    group:
+    xfaderLeft, xfaderRight: default | warning | off
+          Picks a colored icon for L,M,R depending on whether
+          the deck's orientation is the default, set to Main
+          or to the opposite side
+-->
+<Template>
+  <WidgetGroup>
+    <ObjectName>CrossfaderButtonContainer_<Variable name="DeckGroup"/></ObjectName>
+    <Layout>horizontal</Layout>
+    <SizePolicy>min,min</SizePolicy>
+    <Children>
+
+      <WidgetGroup>
+        <Layout>stacked</Layout>
+        <Size>33f,15f</Size>
+        <Children>
+          <!-- invisible buttons = actual controls -->
+          <WidgetGroup>
+            <Layout>horizontal</Layout>
+            <SizePolicy>min,min</SizePolicy>
+            <Children>
+              <!-- L -->
+              <PushButton>
+                <ObjectName>Blank</ObjectName>
+                <TooltipId>orientation</TooltipId>
+                <Size>11f,15f</Size>
+                <NumberStates>2</NumberStates>
+                <State>
+                  <Number>0</Number>
+                </State>
+                <State>
+                  <Number>1</Number>
+                </State>
+                <Connection>
+                  <ConfigKey><Variable name="Group"/>,orientation_left</ConfigKey>
+                  <ButtonState>LeftButton</ButtonState>
+                </Connection>
+              </PushButton>
+              <!-- M -->
+              <PushButton>
+                <ObjectName>Blank</ObjectName>
+                <TooltipId>orientation</TooltipId>
+                <Size>11f,15f</Size>
+                <NumberStates>2</NumberStates>
+                <State>
+                  <Number>0</Number>
+                </State>
+                <State>
+                  <Number>1</Number>
+                </State>
+                <Connection>
+                  <ConfigKey><Variable name="Group"/>,orientation_center</ConfigKey>
+                  <ButtonState>LeftButton</ButtonState>
+                </Connection>
+              </PushButton>
+              <!-- R -->
+              <PushButton>
+                <ObjectName>Blank</ObjectName>
+                <TooltipId>orientation</TooltipId>
+                <Size>11f,15f</Size>
+                <NumberStates>2</NumberStates>
+                <State>
+                  <Number>0</Number>
+                </State>
+                <State>
+                  <Number>1</Number>
+                </State>
+                <Connection>
+                  <ConfigKey><Variable name="Group"/>,orientation_right</ConfigKey>
+                  <ButtonState>LeftButton</ButtonState>
+                </Connection>
+              </PushButton>
+            </Children>
+          </WidgetGroup>
+
+          <!-- Pushbutton with icons -->
+          <PushButton>
+            <Size>33f,15f</Size>
+            <ObjectName>Blank</ObjectName>
+            <NumberStates>3</NumberStates>
+            <State>
+              <Number>0</Number>
+              <Pressed scalemode="STRETCH_ASPECT">skins:LateNight/<Variable name="BtnScheme"/>/buttons/btn__xfader_deck_left_<Variable name="xfaderLeft"/>.svg</Pressed>
+              <Unpressed scalemode="STRETCH_ASPECT">skins:LateNight/<Variable name="BtnScheme"/>/buttons/btn__xfader_deck_left_<Variable name="xfaderLeft"/>.svg</Unpressed>
+            </State>
+            <State>
+              <Number>1</Number>
+              <Pressed scalemode="STRETCH_ASPECT">skins:LateNight/<Variable name="BtnScheme"/>/buttons/btn__xfader_deck_mid_<Variable name="xfaderMid"/>.svg</Pressed>
+              <Unpressed scalemode="STRETCH_ASPECT">skins:LateNight/<Variable name="BtnScheme"/>/buttons/btn__xfader_deck_mid_<Variable name="xfaderMid"/>.svg</Unpressed>
+            </State>
+            <State>
+              <Number>2</Number>
+              <Pressed scalemode="STRETCH_ASPECT">skins:LateNight/<Variable name="BtnScheme"/>/buttons/btn__xfader_deck_right_<Variable name="xfaderRight"/>.svg</Pressed>
+              <Unpressed scalemode="STRETCH_ASPECT">skins:LateNight/<Variable name="BtnScheme"/>/buttons/btn__xfader_deck_right_<Variable name="xfaderRight"/>.svg</Unpressed>
+            </State>
+            <Connection>
+              <ConfigKey><Variable name="Group"/>,orientation</ConfigKey>
+            </Connection>
+          </PushButton>
+
+        </Children>
+      </WidgetGroup><!-- stacked wrapper -->
+
+    </Children>
+  </WidgetGroup><!-- CrossfaderButtonContainer_Deck -->
+</Template>

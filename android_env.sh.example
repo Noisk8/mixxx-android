@@ -1,0 +1,25 @@
+# Copy this file to android_env.sh and adjust the values for your machine
+# before running ./configure_android.sh && ./build_android.sh
+#
+# This example intentionally contains no real passwords or keys.
+
+# Android SDK/NDK (Ubuntu package layout)
+export ANDROID_SDK=/usr/lib/android-sdk
+export ANDROID_NDK_HOME=/usr/lib/android-sdk/ndk/27.2.12479018
+export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
+
+# Mixxx dependency buildenv (vcpkg binary cache for arm64-android)
+export BUILDENV_NAME=mixxx-deps-2.7-arm64-android-1c20f84a
+export BUILDENV_BASEPATH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/buildenv"
+export BUILDENV_URL=https://downloads.mixxx.org/dependencies/2.7/Linux/mixxx-deps-2.7-arm64-android-1c20f84a.zip
+export BUILDENV_SHA256=6786c09f491166352880984842ffa6f554e974f30a3766a2392298444c1be83c
+export MIXXX_VCPKG_ROOT="${BUILDENV_BASEPATH}/${BUILDENV_NAME}"
+export VCPKG_TARGET_TRIPLET=arm64-android
+
+# APK signing (create your own keystore, e.g. with keytool -genkeypair)
+export QT_ANDROID_KEYSTORE_ALIAS=YOUR_ALIAS
+export QT_ANDROID_KEYSTORE_KEY_PASS=YOUR_KEY_PASSWORD
+export QT_ANDROID_KEYSTORE_PATH=/absolute/path/to/your.keystore
+export QT_ANDROID_KEYSTORE_STORE_PASS=YOUR_STORE_PASSWORD
+
+export PATH="/usr/lib/android-sdk/cmdline-tools/13.0/bin:/usr/lib/android-sdk/platform-tools:${PATH}"
