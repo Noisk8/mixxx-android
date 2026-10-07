@@ -31,19 +31,54 @@ Cambios experimentales respecto al código original de Mixxx:
 ## Requisitos
 
 - Linux (probado en **Ubuntu 24.04**), unos 25 GB de disco libre y 8 GB de RAM
-- Herramientas de línea de comandos de GitHub (`gh`) no son necesarias
 
-Instala las dependencias del sistema y los componentes del SDK/NDK de Android
-con el script oficial de Mixxx:
+### 1. Dependencias de Linux (Ubuntu/Debian)
 
 ```bash
-source tools/android_buildenv.sh setup
+sudo apt update
+sudo apt install -y \
+  build-essential ccache cmake ninja-build make \
+  autoconf autoconf-archive bison flex pkg-config python3-jinja2 \
+  openjdk-17-jdk \
+  google-android-cmdline-tools-13.0-installer google-android-licenses \
+  libasound2-dev libegl1-mesa-dev libglu1-mesa-dev libltdl-dev \
+  libx11-xcb-dev libxi-dev libxkbcommon-dev libxkbcommon-x11-dev \
+  libxrender-dev linux-libc-dev libghc-resolv-dev '^libxcb.*-dev'
 ```
 
-Esto instala compiladores, CMake, JDK 17 y los componentes del SDK en
-`/usr/lib/android-sdk` (`platforms;android-35`, `build-tools;35.0.0`,
-`ndk;27.2.12479018`). Si ya tienes un SDK de Android en otra ruta, edita
-`android_env.sh` con tus rutas.
+Qué instala cada grupo:
+
+| Paquetes | Para qué sirven |
+|---|---|
+| `build-essential cmake ninja-build make ccache` | Compilador C++, CMake, generador Ninja y caché de compilación |
+| `autoconf autoconf-archive bison flex pkg-config python3-jinja2` | Herramientas que necesitan los scripts de vcpkg/dependencias |
+| `openjdk-17-jdk` | Java para Gradle y las herramientas de Android (`keytool` para el keystore) |
+| `google-android-cmdline-tools-13.0-installer google-android-licenses` | `sdkmanager` y licencias del SDK de Android |
+| `libasound2-dev libegl1-mesa-dev libglu1-mesa-dev libltdl-dev libx11-xcb-dev libxi-dev libxkbcommon-dev libxkbcommon-x11-dev libxrender-dev '^libxcb.*-dev' linux-libc-dev libghc-resolv-dev` | Librerías de audio/gráficas (ALSA, OpenGL/EGL, X11/XCB, XKB) que Qt y Mixxx necesitan en el host durante la compilación |
+
+En otras distros (Fedora, Arch, …) instala los equivalentes:
+compilador C++ + CMake + Ninja + ccache, JDK 17, y las librerías de
+desarrollo de ALSA, OpenGL/EGL, X11/XCB y XKB.
+
+### 2. Android SDK y NDK
+
+Con las dependencias anteriores instaladas (`sdkmanager` disponible en el
+PATH):
+
+```bash
+(sudo yes | sdkmanager --licenses) || true
+sudo sdkmanager "platforms;android-35" "platform-tools" \
+  "build-tools;35.0.0" "ndk;27.2.12479018"
+```
+
+Esto instala el SDK en `/usr/lib/android-sdk` (NDK 27.2.12479018,
+plataforma Android 35, build-tools 35.0.0). Si ya tienes un SDK de Android
+en otra ruta, edita `android_env.sh` con tus rutas.
+
+> **Alternativa de un solo paso:** `source tools/android_buildenv.sh setup`
+> (script oficial de Mixxx) ejecuta las dos secciones anteriores de una vez:
+> instala los paquetes de apt, acepta las licencias del SDK y descarga el
+> NDK.
 
 ## Compilar
 
