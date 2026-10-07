@@ -22,6 +22,9 @@ const QString SoundManagerConfig::kAPIDirectSound = QStringLiteral("Windows Dire
 const QString SoundManagerConfig::kAPIIosAudio = QStringLiteral("iOS Audio");
 const QString SoundManagerConfig::kAPICoreAudio = QStringLiteral("Core Audio");
 const QString SoundManagerConfig::kAPIPipewire = QStringLiteral("PipeWire");
+// Name of the PortAudio host API provided by the Oboe library on Android.
+// This must match the name reported by Pa_GetHostApiInfo().
+const QString SoundManagerConfig::kAPIOboe = QStringLiteral("Android Oboe");
 
 const QString SoundManagerConfig::kEmptyComboBox = QStringLiteral("---");
 const unsigned int SoundManagerConfig::kDefaultDeckCount = 2;
@@ -552,6 +555,13 @@ void SoundManagerConfig::loadDefaults(SoundManager* soundManager, unsigned int f
             m_api = SoundManagerConfig::kAPIIosAudio;
 #elif defined(Q_OS_MACOS)
             m_api = SoundManagerConfig::kAPICoreAudio;
+#elif defined(Q_OS_ANDROID)
+            // On Android the only usable backend is the Oboe host API of our
+            // patched PortAudio. ALSA is also listed by PortAudio but has no
+            // devices (the app is sandboxed), so never pick it by default.
+            if (apiList.contains(SoundManagerConfig::kAPIOboe)) {
+                m_api = SoundManagerConfig::kAPIOboe;
+            }
 #endif
         }
     }

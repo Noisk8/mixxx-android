@@ -3850,6 +3850,17 @@ if(PORTMIDI)
   )
 endif()
 
+# Android MIDI (android.media.midi via org.mixxx.MidiBridge)
+if(ANDROID)
+  target_compile_definitions(mixxx-lib PUBLIC __ANDROID_MIDI__)
+  target_sources(
+    mixxx-lib
+    PRIVATE
+      src/controllers/midi/androidmidicontroller.cpp
+      src/controllers/midi/androidmidienumerator.cpp
+  )
+endif()
+
 # Protobuf
 add_subdirectory(src/proto)
 target_link_libraries(mixxx-lib PUBLIC mixxx-proto)

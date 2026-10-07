@@ -126,26 +126,45 @@ void PortAudioEnumerator::initialize() {
                 }
                 int32_t id = device->callMethod<jint>("getId");
                 auto channelCounts = device->callMethod<QJniArray<jint>>("getChannelCounts");
-                int channelCount = *std::max_element(
-                        channelCounts.begin(), channelCounts.end());
+                // Android does not always report channel counts (e.g. built-in
+                // speakers on many devices). Fall back to stereo instead of
+                // dereferencing an empty range (undefined behavior).
+                int channelCount = 2;
+                if (!channelCounts.isEmpty()) {
+                    channelCount = *std::max_element(
+                            channelCounts.begin(), channelCounts.end());
+                    if (channelCount < 1) {
+                        channelCount = 2;
+                    }
+                }
+                // Android does not always report supported sample rates either
+                // (common for built-in output devices). Do not skip the device
+                // in that case -- register it with a sensible default so the
+                // device can be selected as an output.
                 auto sampleRates = device->callMethod<QJniArray<jint>>("getSampleRates");
+                int sampleRate = 48000;
+                if (!sampleRates.isEmpty()) {
+                    if (std::find(sampleRates.begin(), sampleRates.end(), 48000) !=
+                            sampleRates.end()) {
+                        sampleRate = 48000;
+                    } else {
+                        sampleRate = *sampleRates.cbegin();
+                    }
+                }
                 qDebug() << "audioManager - Type:" << type
                          << "- Name:" << name
                          << "- ChannelCount:" << channelCount
-                         << channelCounts.size();
-                if (!sampleRates.isEmpty()) {
-                    int sampleRate = *sampleRates.cbegin();
-                    qDebug() << "audioManager - SampleRates:" << sampleRate;
-                    auto result = PaOboe_RegisterDevice(name.toStdString().c_str(),
-                            id,
-                            direction,
-                            channelCount,
-                            sampleRate);
-                    if (result != paNoError) {
-                        qWarning()
-                                << "Error registering device to PortAudio:"
-                                << Pa_GetErrorText(result);
-                    }
+                         << channelCounts.size()
+                         << "- SampleRate:" << sampleRate;
+                auto result = PaOboe_RegisterDevice(name.toStdString().c_str(),
+                        id,
+                        direction,
+                        channelCount,
+                        sampleRate);
+                if (result != paNoError) {
+                    qWarning()
+                            << "Error registering device to PortAudio:"
+                            << Pa_GetErrorText(result);
                 }
             }
         };

@@ -62,6 +62,7 @@ class SoundManagerConfig {
     static const QString kAPIIosAudio;
     static const QString kAPICoreAudio;
     static const QString kAPIPipewire;
+    static const QString kAPIOboe;
 
     /// The default sample rate that Mixxx uses.
     static constexpr mixxx::audio::SampleRate kMixxxDefaultSampleRate =
