@@ -17,6 +17,9 @@
 #include "util/cmdlineargs.h"
 #include "util/debug.h"
 #include "util/timer.h"
+#ifdef Q_OS_ANDROID
+#include "waveform/widgets/waveformwidgettype.h"
+#endif
 
 const QString kSkinsDirName = QStringLiteral("skins");
 
@@ -127,10 +130,40 @@ SkinPointer SkinLoader::getConfiguredSkin() const {
         }
     }
 
+#ifdef Q_OS_ANDROID
+    const ConfigKey pioneeredSkinMigrationKey("[Config]", "PioneeredSkinMigration");
+    if (m_pConfig->getValueString(pioneeredSkinMigrationKey).isEmpty()) {
+        if (configSkin == "LateNight" || configSkin == "LateNightQML") {
+            configSkin = getDefaultSkinName();
+            m_pConfig->set(
+                    ConfigKey("[Config]", "ResizableSkin"), configSkin);
+        }
+        m_pConfig->set(pioneeredSkinMigrationKey, ConfigValue("1"));
+    }
+#endif
+
     // Pick default skin otherwise
     if (configSkin.isEmpty()) {
         configSkin = getDefaultSkinName();
     }
+
+#ifdef Q_OS_ANDROID
+    if (configSkin == "Pioneered") {
+        const ConfigKey waveformMigrationKey(
+                "[Config]", "PioneeredWaveformMigration");
+        if (m_pConfig->getValueString(waveformMigrationKey) != "2") {
+            bool ok = false;
+            const int waveformType = m_pConfig->getValueString(
+                    ConfigKey("[Waveform]", "WaveformType")).toInt(&ok);
+            if (ok && waveformType == 0) {
+                m_pConfig->set(
+                        ConfigKey("[Waveform]", "WaveformType"),
+                        ConfigValue(static_cast<int>(WaveformWidgetType::RGB)));
+            }
+            m_pConfig->set(waveformMigrationKey, ConfigValue("2"));
+        }
+    }
+#endif
 
     // Try to load the desired skin
     DEBUG_ASSERT(!configSkin.isEmpty());
@@ -159,7 +192,7 @@ SkinPointer SkinLoader::getConfiguredSkin() const {
 }
 
 QString SkinLoader::getDefaultSkinName() const {
-    return "LateNight";
+    return "Pioneered";
 }
 
 QWidget* SkinLoader::loadConfiguredSkin(QWidget* pParent,

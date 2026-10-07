@@ -120,7 +120,9 @@ recompilaciones son incrementales (ccache + Ninja).
 build-android/android-build/build/outputs/apk/release/android-build-release-signed.apk
 ```
 
-También se copia como `Mixxx-Android-arm64.apk` en la raíz del proyecto.
+> **Nota:** esta indicación fue redactada autónomamente por un Agente de IA (Copilot).
+> El APK compilado se copia como `Mixxx-Android-arm64-beta-0.3.apk` en la raíz del proyecto.
+> **Fin de la nota redactada autónomamente por un Agente de IA (Copilot).**
 
 ## Instalar en el teléfono
 

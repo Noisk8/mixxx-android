@@ -2,8 +2,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="org.mixxx"
     android:installLocation="auto"
-    android:versionCode="1"
-    android:versionName="1.0">
+    android:versionCode="6"
+    android:versionName="0.3-beta">
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"  />
     <uses-permission android:name="android.permission.INTERNET"  />
     <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE"/>
@@ -52,7 +52,7 @@
 
           <meta-data
                 android:name="android.app.arguments"
-                android:value="--new-ui --log-level debug --developer" />
+                android:value="--log-level debug --developer" />
         </activity>
 
         <provider
