@@ -1,86 +1,107 @@
-# Mixxx
+> **Nota:** este README fue redactado autónomamente por un Agente de IA (opencode).
 
-[![GitHub latest tag](https://img.shields.io/github/tag/mixxxdj/mixxx.svg)](https://mixxx.org/download)
-[![Packaging status](https://repology.org/badge/tiny-repos/mixxx.svg)](https://repology.org/metapackage/mixxx/versions)
-[![Build status](https://github.com/mixxxdj/mixxx/actions/workflows/build.yml/badge.svg)](https://github.com/mixxxdj/mixxx/actions/workflows/build.yml)
-[![Coverage status](https://coveralls.io/repos/github/mixxxdj/mixxx/badge.svg)](https://coveralls.io/github/mixxxdj/mixxx)
-[![Zulip chat](https://img.shields.io/badge/zulip-join_chat-brightgreen.svg)](https://mixxx.zulipchat.com)
-[![Donate](https://img.shields.io/opencollective/all/mixxx?label=Donate)](https://mixxx.org/donate)
+# mixxx-android
 
-[Mixxx] is Free DJ software that gives you everything you need to perform live
-DJ mixes. Mixxx works on GNU/Linux, Windows, and macOS.
+Build **experimental** de [Mixxx](https://www.mixxx.org) — el software DJ gratuito y
+de código abierto — para **Android** (arm64-v8a, minSdk 28).
 
-## Quick Start
+Este repositorio contiene un snapshot del código fuente de Mixxx con los cambios
+necesarios para compilarlo como APK de Android y probarlo en teléfonos y tablets.
 
-To get started with Mixxx:
+## Contenido
 
-1. For live use, [download the latest stable version][download-stable].
-2. For experimentation and testing, [download a development release][download-testing].
-3. To live on the bleeding edge, clone the repo: `git clone https://github.com/mixxxdj/mixxx.git`
+Scripts de compilación:
 
-## Bug tracker
+| Archivo | Descripción |
+|---|---|
+| `configure_android.sh` | Configura CMake (Ninja, cross-compile `arm64-android`) |
+| `build_android.sh` | Compila y genera el APK firmado |
+| `android_env.sh.example` | Plantilla con las variables de entorno (SDK/NDK, keystore) |
 
-The Mixxx team uses [Github Issues][issues] to manage Mixxx development.
+Cambios experimentales respecto al código original de Mixxx:
 
-Have a bug or feature request? [File a bug on Github][fileabug].
+- El botón de engranaje abre el **diálogo clásico** de preferencias
+  (mantenerlo presionado abre la interfaz QML nueva).
+- Corrección para agregar, quitar y re-enlazar carpetas de música en los
+  ajustes QML (el código original fallaba porque `QUrl::toLocalFile()`
+  devuelve una cadena vacía para rutas sin esquema).
+- Compilación con `-DPIPEWIRE=OFF` (imprescindible: PipeWire no existe en
+  Android y rompe el enlace).
 
-Want to get involved in Mixxx development? Assign yourself a bug from the [easy
-bug list][easybugs] and get started!
+## Requisitos
 
-## Building Mixxx
+- Linux (probado en **Ubuntu 24.04**), unos 25 GB de disco libre y 8 GB de RAM
+- Herramientas de línea de comandos de GitHub (`gh`) no son necesarias
 
-Read [CONTRIBUTING.md](CONTRIBUTING.md) for build instructions, code style
-guidelines, and how to open a pull request.
+Instala las dependencias del sistema y los componentes del SDK/NDK de Android
+con el script oficial de Mixxx:
 
-## Documentation
+```bash
+source tools/android_buildenv.sh setup
+```
 
-For help using Mixxx, there are a variety of options:
+Esto instala compiladores, CMake, JDK 17 y los componentes del SDK en
+`/usr/lib/android-sdk` (`platforms;android-35`, `build-tools;35.0.0`,
+`ndk;27.2.12479018`). Si ya tienes un SDK de Android en otra ruta, edita
+`android_env.sh` con tus rutas.
 
-- [Mixxx manual][manual]
-- [Mixxx wiki][wiki]
-- [Hardware Compatibility]
-- [Creating Skins]
+## Compilar
 
-## Translation
+### 1. Variables de entorno
 
-Help to spread Mixxx with translations into more languages, as well as to update and ensure the accuracy of existing translations.
+```bash
+cp android_env.sh.example android_env.sh
+```
 
-- [Help translate content]
-- [Mixxx i18n wiki]
-- [Mixxx localization forum]
-- [Mixxx glossary]
+Edita `android_env.sh` y revisa especialmente las rutas y contraseñas del
+keystore de firma (ver paso 2).
 
-## Community
+### 2. Keystore de firma (solo la primera vez)
 
-Mixxx is a vibrant community of hackers, DJs and artists. To keep track of
-development and community news:
+```bash
+keytool -genkeypair -v -keystore mixxx.keystore -alias mixxx \
+    -keyalg RSA -keysize 2048 -validity 10000
+```
 
-- Chat with us on [Zulip][zulip].
-- Follow us on [Mastodon], [Bluesky] and [Facebook].
-- Subscribe to the [Mixxx Blog][blog].
-- Post on the [Mixxx forums][discourse].
+Anota la contraseña y ponla en `android_env.sh`
+(`QT_ANDROID_KEYSTORE_STORE_PASS`, `QT_ANDROID_KEYSTORE_KEY_PASS`).
+El keystore y `android_env.sh` están en `.gitignore`: nunca se suben al repo.
 
-## License
+### 3. Configurar y construir
 
-Mixxx is released under the GPLv2. See the LICENSE file for a full copy of the
-license.
+```bash
+./configure_android.sh
+./build_android.sh
+```
 
-[mixxx]: https://mixxx.org
-[download-stable]: https://mixxx.org/download/#stable
-[download-testing]: https://mixxx.org/download/#testing
-[issues]: https://github.com/mixxxdj/mixxx/issues
-[fileabug]: https://github.com/mixxxdj/mixxx/issues/new/choose
-[mastodon]: https://floss.social/@mixxx
-[Bluesky]: https://bsky.app/profile/mixxx.bsky.social
-[facebook]: https://www.facebook.com/pages/Mixxx-DJ-Software/21723485212
-[blog]: https://mixxx.org/news/
-[manual]: https://manual.mixxx.org/
-[wiki]: https://github.com/mixxxdj/mixxx/wiki
-[easybugs]: https://github.com/mixxxdj/mixxx/issues?q=is%3Aopen+is%3Aissue+label%3Aeasy
-[creating skins]: https://mixxx.org/wiki/doku.php/Creating-Skins
-[help translate content]: https://explore.transifex.com/mixxx-dj-software/
-[Mixxx i18n wiki]: https://github.com/mixxxdj/mixxx/wiki/Internationalization
-[Mixxx localization forum]: https://mixxx.discourse.group/c/translation/13
-[hardware compatibility]: https://manual.mixxx.org/2.3/en/hardware/manuals.html
-[zulip]: https://mixxx.zulipchat.com/
-[discourse]: https://mixxx.discourse.group/
+La primera configuración descarga automáticamente el buildenv de dependencias
+de Mixxx (Qt6 + herramientas de vcpkg, ~12 GB descomprimido) en `buildenv/`.
+La primera compilación completa tarda del orden de 30–60 minutos; las
+recompilaciones son incrementales (ccache + Ninja).
+
+### 4. Resultado
+
+```
+build-android/android-build/build/outputs/apk/release/android-build-release-signed.apk
+```
+
+También se copia como `Mixxx-Android-arm64.apk` en la raíz del proyecto.
+
+## Instalar en el teléfono
+
+```bash
+adb install -r build-android/android-build/build/outputs/apk/release/android-build-release-signed.apk
+```
+
+Al iniciar la app, concede el permiso **"Acceso a todos los archivos"**
+(All files access) cuando Mixxx abra la pantalla de sistema correspondiente;
+sin él, la biblioteca no podrá leer tus carpetas de música.
+
+## Notas
+
+- El APK generado **no** está incluido en este repositorio; se compila localmente.
+- `android_env.sh` (con contraseñas) y `mixxx.keystore` están ignorados por git.
+- El código fuente de Mixxx es © sus autores, licencia **GPL-2.0-or-later**;
+  ver <https://github.com/mixxxdj/mixxx>.
+
+> **Nota:** este README fue redactado autónomamente por un Agente de IA (opencode).
