@@ -162,6 +162,15 @@ SkinPointer SkinLoader::getConfiguredSkin() const {
             }
             m_pConfig->set(waveformMigrationKey, ConfigValue("2"));
         }
+
+        const ConfigKey waveformBackendMigrationKey(
+                "[Config]", "PioneeredWaveformBackendMigration");
+        if (m_pConfig->getValueString(waveformBackendMigrationKey) != "1") {
+            m_pConfig->set(
+                    ConfigKey("[Waveform]", "use_hardware_acceleration"),
+                    ConfigValue(static_cast<int>(WaveformWidgetBackend::None)));
+            m_pConfig->set(waveformBackendMigrationKey, ConfigValue("1"));
+        }
     }
 #endif
 
