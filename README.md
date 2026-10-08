@@ -184,6 +184,65 @@ independientes.
 
 > **Fin del bloque redactado autónomamente por un agente de IA.**
 
+## Requisitos técnicos del dispositivo (resumen de madurez)
+
+### Estado actual: **MVP experimental** (beta 0.5)
+
+Probado únicamente en **Redmi Note 15 Pro 5G** (Snapdragon 7s Gen 4, 8 GB RAM, Android 14/16, Mali-G615). La forma de onda principal funciona con **renderer software a 30 FPS**; el renderer GPU (`AllShader`/`RGB`) sigue inestable en Android. La DDJ-400 **no se ha probado aún conectada al móvil** (solo se ha verificado que Android la enumera por USB).
+
+### Requisitos mínimos observados para ejecutar la app
+
+| Componente | Mínimo observado | Recomendado para uso fluido |
+|------------|------------------|-----------------------------|
+| **Arquitectura** | ARM64 (arm64-v8a) | ARM64 |
+| **Android** | API 28 (Android 9) | API 33+ (Android 13+) |
+| **RAM** | 4 GB (app usa ~220 MB + decoders + BD) | ≥ 6 GB (≥ 8 GB para biblioteca grande) |
+| **GPU / Driver** | OpenGL ES 3.2 / Vulkan 1.1 estable | Mali-G610/Adreno 720 o superior |
+| **Almacenamiento** | 500 MB app + biblioteca | ≥ 2 GB libres |
+| **USB** | Host / OTG obligatorio | Hub OTG alimentado para DDJ-400 |
+| **Permisos** | `MANAGE_EXTERNAL_STORAGE`, `RECORD_AUDIO`, `USB_PERMISSION`, `MODIFY_AUDIO_SETTINGS`, `WAKE_LOCK` | Concedidos por el usuario |
+
+### Dispositivos probables compatibles (2024-2025)
+
+| Gama | SoC típico | GPU | ¿Probable? |
+|------|------------|-----|------------|
+| Alta (Snapdragon 8 Gen 2/3, Dimensity 9200/9300) | Adreno 740/750, Mali-G715/720 | ✅ Sí |
+| Media-alta (Snapdragon 7/7s Gen 1-3, Dimensity 7000/8000) | Adreno 642L/720, Mali-G610/615 | ✅ Sí (tu Redmi entra aquí) |
+| Media (Snapdragon 6 Gen 1, Dimensity 1080/7050) | Adreno 710, Mali-G68/57 | ⚠️ Probar con ≥ 6 GB RAM |
+| Baja / 2021-2022 (Snapdragon 480/680, Helio G99) | Adreno 619, Mali-G57 MC2 | ❌ Riesgo alto (RAM 4 GB, GPU justa) |
+
+**Tablets**: mismas reglas; ≥ 8″ aprovechan Pioneered (mínimo 480×420). Samsung Tab S9 / Xiaomi Pad 6 → ✅; tablets de 3-4 GB RAM → ⚠️.
+
+### Qué falta para considerar la app “estable” (checklist)
+
+| Área | Estado | Qué falta | Prioridad |
+|------|--------|-----------|-----------|
+| **Renderer GPU waveforms** | Solo software a 30 FPS | Reactivar renderer `AllShader`/`RGB` con fallback automático verificado | 🔴 Crítico |
+| **Frame-rate adaptativo** | Fijo a 30 FPS | Detectar GPU/RAM al arrancar y elegir 30/60/120 dinámicamente | 🔴 Crítico |
+| **Prueba DDJ-400 completa** | Solo audio por altavoz del móvil | Conectar DDJ-400 por OTG: validar Main 1-2, Headphones 3-4, MIDI, controles físicos | 🔴 Crítico |
+| **Renderer QML completo** | No usado en esta rama | Terminar migración a QML (skin LateNightQML) | 🟠 Alta |
+| **Pruebas multi-dispositivo** | Solo Redmi Note 15 Pro 5G | Matriz de 4-6 dispositivos (alta, media, tablet, foldable) | 🟠 Alta |
+| **Gestión de memoria** | 221 MB RSS en reposo | Perfilado con `heapprofd`/`perfetto`; liberar cachés de waveforms no usadas | 🟠 Alta |
+| **Ciclo de vida Android** | Básico | `AudioFocus`, liberación USB audio, restauración de estado | 🟠 Alta |
+| **Audio USB robusto** | Básico | Desconexión/reconexión en caliente, cambio sample-rate, permisos USB persistentes | 🟠 Alta |
+| **MIDI `android.media.midi`** | Enumeración + JNI | Latencia < 10 ms, sysex largo, reconexión | 🟠 Alta |
+| **Empaquetado AAB / Play Store** | APK local | Build reproducible, `bundletool`, AAB firmado, Play Integrity | 🟡 Media |
+| **Soporte x86_64 / ARM32** | Solo arm64-v8a | Añadir `x86_64` y opcional `armeabi-v7a` | 🟡 Media |
+| **CI / QA automatizado** | Build manual | GitHub Actions: build matrix, unit tests, UI tests | 🟢 Baja |
+
+### Estimación de esfuerzo para “estable”
+
+| Hito | Semanas-hombre |
+|------|----------------|
+| Renderer GPU + frame-rate adaptativo | 3-4 |
+| DDJ-400 end-to-end + MIDI/USB robusto | 2-3 |
+| QML completo + LateNightQML | 3-4 |
+| Matriz 6 dispositivos + CI | 3-4 |
+| AAB + Play Store | 1-2 |
+| **Total mínimo viable “estable”** | **12-17 semanas-hombre** (1-2 devs a tiempo completo ≈ 3-4 meses) |
+
+---
+
 ## Notas
 
 - El APK generado **no** está incluido en este repositorio; se compila localmente.
