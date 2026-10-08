@@ -3861,6 +3861,11 @@ if(ANDROID)
   )
 endif()
 
+# Android audio focus (android.media.AudioManager via org.mixxx.AudioFocusBridge)
+if(ANDROID)
+  target_sources(mixxx-lib PRIVATE src/soundio/androidaudiofocus.cpp)
+endif()
+
 # Protobuf
 add_subdirectory(src/proto)
 target_link_libraries(mixxx-lib PUBLIC mixxx-proto)

@@ -1,4 +1,5 @@
 #include "android.h"
+#include "soundio/androidaudiofocus.h"
 
 #include <android/api-level.h>
 #include <android/log.h>
@@ -114,16 +115,25 @@ void usbDeviceAccessResult(QJniObject device, bool granted) {
 } // namespace mixxx
 
 Q_DECLARE_JNI_CLASS(UsbPermissionClass, "org/mixxx/UsbPermission")
+Q_DECLARE_JNI_CLASS(AudioFocusBridgeClass, "org/mixxx/AudioFocusBridge")
 
 void usbDeviceAccessResult(JNIEnv*, jobject, jobject device, jboolean granted) {
     mixxx::android::usbDeviceAccessResult(device, granted);
 }
 Q_DECLARE_JNI_NATIVE_METHOD(usbDeviceAccessResult)
 
+void onAudioFocusChange(JNIEnv*, jclass, jint focusChange) {
+    mixxx::android::audioFocusChanged(focusChange);
+}
+Q_DECLARE_JNI_NATIVE_METHOD(onAudioFocusChange)
+
 JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM*, void*) {
     QJniEnvironment env;
     env.registerNativeMethods<QtJniTypes::UsbPermissionClass>({
             Q_JNI_NATIVE_METHOD(usbDeviceAccessResult),
+    });
+    env.registerNativeMethods<QtJniTypes::AudioFocusBridgeClass>({
+            Q_JNI_NATIVE_METHOD(onAudioFocusChange),
     });
     return JNI_VERSION_1_6;
 }

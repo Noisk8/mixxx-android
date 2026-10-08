@@ -25,6 +25,7 @@
 #include "qml/qmlcoreservices.h"
 #include "qml/qmldlgpreferencesproxy.h"
 #include "qml/qmlrecordingproxy.h"
+#include "soundio/androidaudiofocus.h"
 #include "soundio/soundmanager.h"
 #include "util/versionstore.h"
 #include "waveform/guitick.h"
@@ -168,6 +169,9 @@ QmlApplication::QmlApplication(
 
     m_pCoreServices->initialize(app);
     app->installEventFilter(m_pCoreServices->getKeyboardEventFilter().get());
+#ifdef __ANDROID__
+    new mixxx::android::AudioFocus(this);
+#endif
     registerImageProvider();
 
     if (!WaveformWidgetFactory::isCreated()) {
