@@ -134,6 +134,56 @@ Al iniciar la app, concede el permiso **"Acceso a todos los archivos"**
 (All files access) cuando Mixxx abra la pantalla de sistema correspondiente;
 sin él, la biblioteca no podrá leer tus carpetas de música.
 
+> **Aviso de autoría:** La siguiente sección fue redactada autónomamente por un agente de IA.
+
+## Configurar el audio de la Pioneer DDJ-400
+
+La DDJ-400 tiene una interfaz USB de audio integrada. En Mixxx, asigna la salida
+principal a los canales 1–2 y la preescucha de auriculares a los canales 3–4,
+como indica el [manual de Mixxx para la DDJ-400](https://manual.mixxx.org/2.7/en/hardware/controllers/pioneer_ddj_400.html).
+
+### Conectar y seleccionar la interfaz
+
+1. Conecta la DDJ-400 al teléfono con un adaptador USB-C OTG o un hub USB-C
+   compatible con modo host. Se recomienda un hub alimentado para evitar
+   problemas de energía.
+2. Conecta la DDJ-400 antes de abrir Mixxx, o reinicia Mixxx después. Acepta en
+   Android cualquier permiso solicitado para el dispositivo USB.
+3. Abre **Preferencias → Sound Hardware / Hardware de sonido** y selecciona
+   **Android Oboe** como API de sonido.
+4. En la pestaña **Output / Salida**, asigna el mismo dispositivo DDJ-400 a
+   estas dos rutas:
+
+   | Ruta en Mixxx | Dispositivo | Canales |
+   |---|---|---|
+   | **Main / Principal** | DDJ-400 (puede aparecer como `USB-Audio - DDJ-400`) | **Channels 1–2** |
+   | **Headphones / Auriculares** | El mismo dispositivo DDJ-400 | **Channels 3–4** |
+
+5. Aplica o guarda los cambios. Si no aparecen los canales 3–4, Android no está
+   exponiendo las cuatro salidas necesarias para la preescucha independiente.
+
+### Usar la preescucha de auriculares
+
+1. Conecta los auriculares al conector **PHONES** de la DDJ-400.
+2. Con una pista cargada, pulsa el botón **CUE** del canal que quieras
+   preescuchar.
+3. Gira **HEADPHONES MIXING** hacia **CUE** para oír la preescucha y sube
+   **HEADPHONES LEVEL** lentamente desde el mínimo. **MASTER CUE** envía el
+   master a los auriculares.
+4. Para el sonido principal, conecta los altavoces o el amplificador a las
+   salidas RCA **MASTER** de la DDJ-400 y sube **MASTER LEVEL** gradualmente.
+
+Los controles físicos de CUE requieren también que Mixxx reconozca la DDJ-400
+en **Preferencias → Controllers / Controladores**, que esté habilitada y que use
+el mapeo **Pioneer DDJ-400**. El mapeo MIDI y las salidas de audio son ajustes
+independientes.
+
+> Al conectar la DDJ-400 por OTG, el teléfono deja de estar conectado por USB al
+> computador para ADB. Reconecta el cable al computador después de la prueba
+> para recopilar registros.
+
+> **Fin del bloque redactado autónomamente por un agente de IA.**
+
 ## Notas
 
 - El APK generado **no** está incluido en este repositorio; se compila localmente.
