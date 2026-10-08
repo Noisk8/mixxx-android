@@ -4,7 +4,10 @@
 #include <QCloseEvent>
 #include <QDebug>
 #include <QFileDialog>
+#include <QIcon>
+#include <QLayout>
 #include <QOpenGLContext>
+#include <QToolButton>
 #include <QUrl>
 
 #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
@@ -586,6 +589,13 @@ void MixxxMainWindow::initializeWindow() {
 
 #ifndef __APPLE__
 void MixxxMainWindow::alwaysHideMenuBarDlg() {
+#ifdef Q_OS_ANDROID
+    auto settings = m_pCoreServices->getSettings();
+    settings->setValue(kHideMenuBarConfigKey, false);
+    settings->setValue(kMenuBarHintConfigKey, false);
+    return;
+#endif
+
     // Don't show the dialog if the user unchecked "Ask me again"
     if (!m_pCoreServices->getSettings()->getValue<bool>(
                 kMenuBarHintConfigKey, true)) {
@@ -1010,6 +1020,12 @@ void MixxxMainWindow::slotUpdateMenuBarAltKeyConnection() {
         return;
     }
 
+#ifdef Q_OS_ANDROID
+    m_pCoreServices->getSettings()->setValue(kHideMenuBarConfigKey, false);
+    m_pMenuBar->showMenuBar();
+    return;
+#endif
+
     if (m_pCoreServices->getSettings()->getValue<bool>(kHideMenuBarConfigKey, false)) {
         // with Qt::UniqueConnection we don't need to check whether we're already connected
         connect(m_pCoreServices->getKeyboardEventFilter().get(),
@@ -1407,6 +1423,33 @@ bool MixxxMainWindow::loadConfiguredSkin() {
     m_pCentralWidget = m_pSkinLoader->loadConfiguredSkin(this,
             &m_skinCreatedControls,
             m_pCoreServices.get());
+#ifdef Q_OS_ANDROID
+    if (m_pCentralWidget) {
+        QWidget* tabControls = m_pCentralWidget->findChild<QWidget*>(
+                QStringLiteral("TabControls"));
+        if (tabControls && tabControls->layout()) {
+            auto* preferencesButton = new QToolButton(tabControls);
+            preferencesButton->setObjectName(QStringLiteral("AndroidPreferencesButton"));
+            preferencesButton->setIcon(QIcon(
+                    QStringLiteral(":/images/preferences/light/ic_preferences_interface.svg")));
+            preferencesButton->setIconSize(QSize(32, 32));
+            preferencesButton->setFixedSize(48, 48);
+            preferencesButton->setAutoRaise(true);
+            preferencesButton->setFocusPolicy(Qt::NoFocus);
+            preferencesButton->setToolTip(tr("Preferences"));
+            preferencesButton->setAccessibleName(tr("Preferences"));
+            preferencesButton->setStyleSheet(
+                    QStringLiteral(
+                            "QToolButton { background-color: transparent; border: 1px solid #32323c; "
+                            "border-radius: 4px; } QToolButton:pressed { background-color: #32323c; }"));
+            tabControls->layout()->addWidget(preferencesButton);
+            connect(preferencesButton,
+                    &QToolButton::clicked,
+                    this,
+                    &MixxxMainWindow::slotOptionsPreferences);
+        }
+    }
+#endif
     if (centralWidget() == m_pLaunchImage) {
         initializationProgressUpdate(100, "");
     }

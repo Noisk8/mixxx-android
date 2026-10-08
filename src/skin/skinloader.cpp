@@ -171,6 +171,16 @@ SkinPointer SkinLoader::getConfiguredSkin() const {
                     ConfigValue(static_cast<int>(WaveformWidgetBackend::None)));
             m_pConfig->set(waveformBackendMigrationKey, ConfigValue("1"));
         }
+
+        const ConfigKey waveformFrameRateMigrationKey(
+                "[Config]", "PioneeredWaveformFrameRateMigration");
+        if (m_pConfig->getValueString(waveformFrameRateMigrationKey) != "1") {
+            const ConfigKey waveformFrameRateKey("[Waveform]", "FrameRate");
+            if (m_pConfig->getValue(waveformFrameRateKey, 60) > 30) {
+                m_pConfig->setValue(waveformFrameRateKey, 30);
+            }
+            m_pConfig->set(waveformFrameRateMigrationKey, ConfigValue("1"));
+        }
     }
 #endif
 

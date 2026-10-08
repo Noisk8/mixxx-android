@@ -61,6 +61,10 @@ DlgPrefInterface::DlgPrefInterface(
           m_minScaleFactor(1.0),
           m_dDevicePixelRatio(1.0) {
     setupUi(this);
+#ifdef Q_OS_ANDROID
+    labelHideMenuBarOption->hide();
+    checkBoxHideMenuBar->hide();
+#endif
 
     updateScreenMetrics();
 
