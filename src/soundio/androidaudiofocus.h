@@ -5,6 +5,7 @@
 #include <vector>
 
 class ControlProxy;
+class QTimer;
 
 namespace mixxx {
 namespace android {
@@ -15,7 +16,7 @@ class AudioFocus : public QObject {
     Q_OBJECT
 
   public:
-    explicit AudioFocus(QObject* pParent = nullptr);
+    explicit AudioFocus(QObject* pParent = nullptr, bool diagnostics = false);
     ~AudioFocus() override;
 
     void handleFocusChange(int focusChange);
@@ -23,8 +24,10 @@ class AudioFocus : public QObject {
   private:
     void updatePlayingState();
     void pauseAllDecks();
+    void logAudioLevels();
 
     std::vector<std::unique_ptr<ControlProxy>> m_playControls;
+    std::unique_ptr<QTimer> m_pDiagnosticTimer;
     bool m_hasFocus = false;
 };
 

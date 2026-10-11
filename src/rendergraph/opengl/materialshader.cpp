@@ -1,6 +1,7 @@
 #include "rendergraph/materialshader.h"
 
 #include <QFile>
+#include <QOpenGLContext>
 #ifdef USE_QSHADER_FOR_GL
 #include <rhi/qshader.h>
 #endif
@@ -21,7 +22,31 @@ QByteArray loadShaderCodeFromFile(const QString& path) {
         qWarning() << "Failed to open the shader file:" << path;
         return QByteArray();
     }
-    QShader qsbShader = QShader::fromSerialized(file.readAll());
+    const QShader qsbShader = QShader::fromSerialized(file.readAll());
+
+    // The qsb bundles carry several GLSL variants (see shaders/CMakeLists.txt).
+    // Desktop drivers accept the legacy '#version 120' output, but OpenGL ES
+    // drivers (Android Mali/Adreno) reject it outright; they need the
+    // '#version 300 es' variant which keeps the interface block syntax.
+#ifdef Q_OS_ANDROID
+    // Android is always OpenGL ES even if the shader is compiled before a
+    // context becomes current.
+    const bool isGles = true;
+#else
+    const QOpenGLContext* pContext = QOpenGLContext::currentContext();
+    const bool isGles = pContext && pContext->isOpenGLES();
+#endif
+    if (isGles) {
+        const QShaderKey esKey(
+                QShader::GlslShader, QShaderVersion(300, QShaderVersion::GlslEs));
+        const QByteArray esCode = qsbShader.shader(esKey).shader();
+        if (!esCode.isEmpty()) {
+            return esCode;
+        }
+        qWarning().noquote()
+                << "MaterialShader: no GLSL ES 3.0 variant in" << path
+                << "- falling back to desktop GLSL";
+    }
     QShaderKey key(QShader::GlslShader, 120);
     return qsbShader.shader(key).shader();
 }

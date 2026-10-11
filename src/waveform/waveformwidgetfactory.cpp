@@ -552,6 +552,20 @@ void WaveformWidgetFactory::addVuMeter(WVuMeterBase* pVuMeter) {
 }
 
 void WaveformWidgetFactory::slotSkinLoaded() {
+#ifdef Q_OS_ANDROID
+    // Skin loading may run configuration migrations that adjust the frame
+    // rate after setConfig() already read it. Pick the final value up here
+    // so the first session after a migration is correct.
+    if (m_config) {
+        const int frameRate = m_config->getValue(kFrameRateKey, m_frameRate);
+        if (frameRate != m_frameRate) {
+            logWaveformDiag(QStringLiteral("slotSkinLoaded: frame rate %1 -> %2")
+                                    .arg(m_frameRate)
+                                    .arg(frameRate));
+            setFrameRate(frameRate);
+        }
+    }
+#endif
     setWidgetTypeFromConfig();
 #if QT_VERSION >= QT_VERSION_CHECK(5, 14, 0) && defined __WINDOWS__
     // This regenerates the waveforms twice because of a bug found on Windows
@@ -685,6 +699,9 @@ bool WaveformWidgetFactory::setWidgetTypeFromConfig() {
     // which prevents loading the desired type.
     // Fix: enable acceleration if available and if type requires it.
     auto backend = getBackendFromConfig();
+    logWaveformDiag(QStringLiteral("setWidgetTypeFromConfig: resolved backend=%1 (0=None 2=GLSL 3=AllShader) frameRate=%2")
+                            .arg(static_cast<int>(backend))
+                            .arg(m_frameRate));
     // True if type and available backends support acceleration
     bool typeSupportsAcceleration = widgetTypeSupportsAcceleration(m_configType);
     bool typeSupportsSoftware = widgetTypeSupportsSoftware(m_configType);

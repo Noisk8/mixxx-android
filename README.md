@@ -186,9 +186,9 @@ independientes.
 
 ## Requisitos técnicos del dispositivo (resumen de madurez)
 
-### Estado actual: **MVP experimental** (beta 0.5)
+### Estado actual: **MVP experimental** (beta 0.7)
 
-Probado únicamente en **Redmi Note 15 Pro 5G** (Snapdragon 7s Gen 4, 8 GB RAM, Android 14/16, Mali-G615). La forma de onda principal funciona con **renderer software a 30 FPS**; el renderer GPU (`AllShader`/`RGB`) sigue inestable en Android. La DDJ-400 **no se ha probado aún conectada al móvil** (solo se ha verificado que Android la enumera por USB).
+Probado únicamente en **Redmi Note 15 Pro 5G** (Snapdragon 7s Gen 4, 8 GB RAM, Android 14/16, Mali-G615). Desde la beta 0.7 el renderer GPU **AllShader funciona a 60 FPS** (la causa de la inestabilidad eran los shaders GLSL desktop `#version 120` en los bundles `.qsb`, rechazados por el driver GLSL ES de Mali; ahora se hornea y selecciona la variante `300 es` con fallback automático a software). La DDJ-400 **no se ha probado aún conectada al móvil** (solo se ha verificado que Android la enumera por USB).
 
 ### Requisitos mínimos observados para ejecutar la app
 
@@ -217,8 +217,8 @@ Probado únicamente en **Redmi Note 15 Pro 5G** (Snapdragon 7s Gen 4, 8 GB RAM, 
 
 | Área | Estado | Qué falta | Prioridad |
 |------|--------|-----------|-----------|
-| **Renderer GPU waveforms** | Solo software a 30 FPS | Reactivar renderer `AllShader`/`RGB` con fallback automático verificado | 🔴 Crítico |
-| **Frame-rate adaptativo** | Fijo a 30 FPS | Detectar GPU/RAM al arrancar y elegir 30/60/120 dinámicamente | 🔴 Crítico |
+| **Renderer GPU waveforms** | ✅ AllShader verificado en Mali-G615 (0 fallos de shader, 0% jank) | Validar en más GPUs (Adreno, Mali serie baja) y en la DDJ-400 por OTG | 🔴 Crítico |
+| **Frame-rate adaptativo** | Detección runtime: GPU→60 FPS, software→30 FPS | Opciones de 120 FPS y refresh-rate del display | 🔴 Crítico |
 | **Prueba DDJ-400 completa** | Solo audio por altavoz del móvil | Conectar DDJ-400 por OTG: validar Main 1-2, Headphones 3-4, MIDI, controles físicos | 🔴 Crítico |
 | **Renderer QML completo** | No usado en esta rama | Terminar migración a QML (skin LateNightQML) | 🟠 Alta |
 | **Pruebas multi-dispositivo** | Solo Redmi Note 15 Pro 5G | Matriz de 4-6 dispositivos (alta, media, tablet, foldable) | 🟠 Alta |

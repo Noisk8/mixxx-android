@@ -246,64 +246,6 @@
               </WidgetGroup>
             </Children>
           </WidgetGroup>
-          <WidgetGroup>
-            <ObjectName>DeckTransportControls</ObjectName>
-            <Layout>horizontal</Layout>
-            <Size>92max,0me</Size>
-            <Children>
-              <PlayButton>
-                <ObjectName>DeckPlayButton</ObjectName>
-                <TooltipId>play_cue_set</TooltipId>
-                <Size>44max,40f</Size>
-                <Group>[Channel<Variable name="channel"/>]</Group>
-                <NumberStates>2</NumberStates>
-                <State>
-                  <Number>0</Number>
-                  <Text>PLAY</Text>
-                </State>
-                <State>
-                  <Number>1</Number>
-                  <Text>PAUSE</Text>
-                </State>
-                <Connection>
-                  <ConfigKey>[Channel<Variable name="channel"/>],play</ConfigKey>
-                  <ButtonState>LeftButton</ButtonState>
-                </Connection>
-                <Connection>
-                  <ConfigKey>[Channel<Variable name="channel"/>],cue_set</ConfigKey>
-                  <ButtonState>RightButton</ButtonState>
-                </Connection>
-                <Connection>
-                  <ConfigKey>[Channel<Variable name="channel"/>],play_latched</ConfigKey>
-                  <ConnectValueFromWidget>false</ConnectValueFromWidget>
-                </Connection>
-              </PlayButton>
-              <CueButton>
-                <ObjectName>DeckCueButton</ObjectName>
-                <TooltipId>cue_default_cue_gotoandstop</TooltipId>
-                <Size>44max,40f</Size>
-                <Group>[Channel<Variable name="channel"/>]</Group>
-                <NumberStates>2</NumberStates>
-                <State>
-                  <Number>0</Number>
-                  <Text>CUE</Text>
-                </State>
-                <State>
-                  <Number>1</Number>
-                  <Text>CUE</Text>
-                </State>
-                <Connection>
-                  <ConfigKey>[Channel<Variable name="channel"/>],cue_default</ConfigKey>
-                  <EmitOnPressAndRelease>true</EmitOnPressAndRelease>
-                  <ButtonState>LeftButton</ButtonState>
-                </Connection>
-                <Connection>
-                  <ConfigKey>[Channel<Variable name="channel"/>],cue_indicator</ConfigKey>
-                  <ConnectValueFromWidget>false</ConnectValueFromWidget>
-                </Connection>
-              </CueButton>
-            </Children>
-          </WidgetGroup>
         </Children>
         <Connection>
           <ConfigKey>[Tab],overview</ConfigKey>

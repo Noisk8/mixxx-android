@@ -18,6 +18,7 @@
 #include "util/debug.h"
 #include "util/timer.h"
 #ifdef Q_OS_ANDROID
+#include "waveform/waveformwidgetfactory.h"
 #include "waveform/widgets/waveformwidgettype.h"
 #endif
 
@@ -163,23 +164,41 @@ SkinPointer SkinLoader::getConfiguredSkin() const {
             m_pConfig->set(waveformMigrationKey, ConfigValue("2"));
         }
 
-        const ConfigKey waveformBackendMigrationKey(
-                "[Config]", "PioneeredWaveformBackendMigration");
-        if (m_pConfig->getValueString(waveformBackendMigrationKey) != "1") {
+        // Migration v2 (Android): choose the renderer at runtime instead of
+        // forcing a fixed backend. When the waveforms factory detected usable
+        // GL/GLES with shader support at startup, enable the GPU-accelerated
+        // AllShader backend at 60 FPS; otherwise stay on software rendering
+        // capped at 30 FPS. Note that WaveformWidgetFactory::getBackendFromConfig()
+        // additionally validates the configured backend and falls back to
+        // software automatically if the widget type cannot be accelerated.
+        // (Text written autonomously by an AI agent (opencode).)
+        const ConfigKey waveformRendererMigrationKey(
+                "[Config]", "PioneeredWaveformRendererMigration");
+        if (m_pConfig->getValueString(waveformRendererMigrationKey) != "1" &&
+                WaveformWidgetFactory::isCreated()) {
+            WaveformWidgetFactory* pFactory = WaveformWidgetFactory::instance();
+            const bool gpuUsable = pFactory &&
+                    (pFactory->isOpenGlAvailable() || pFactory->isOpenGlesAvailable()) &&
+                    pFactory->isOpenGlShaderAvailable();
+
             m_pConfig->set(
                     ConfigKey("[Waveform]", "use_hardware_acceleration"),
-                    ConfigValue(static_cast<int>(WaveformWidgetBackend::None)));
-            m_pConfig->set(waveformBackendMigrationKey, ConfigValue("1"));
-        }
+                    ConfigValue(static_cast<int>(gpuUsable
+                            ? WaveformWidgetBackend::AllShader
+                            : WaveformWidgetBackend::None)));
 
-        const ConfigKey waveformFrameRateMigrationKey(
-                "[Config]", "PioneeredWaveformFrameRateMigration");
-        if (m_pConfig->getValueString(waveformFrameRateMigrationKey) != "1") {
             const ConfigKey waveformFrameRateKey("[Waveform]", "FrameRate");
-            if (m_pConfig->getValue(waveformFrameRateKey, 60) > 30) {
+            if (gpuUsable) {
+                m_pConfig->setValue(waveformFrameRateKey, 60);
+            } else if (m_pConfig->getValue(waveformFrameRateKey, 60) > 30) {
                 m_pConfig->setValue(waveformFrameRateKey, 30);
             }
-            m_pConfig->set(waveformFrameRateMigrationKey, ConfigValue("1"));
+
+            qWarning().noquote() << "[SkinLoader] Android renderer migration:"
+                                 << "GPU usable =" << gpuUsable
+                                 << "->" << (gpuUsable ? "AllShader @ 60 FPS"
+                                                       : "software @ 30 FPS");
+            m_pConfig->set(waveformRendererMigrationKey, ConfigValue("1"));
         }
     }
 #endif

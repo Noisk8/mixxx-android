@@ -2,6 +2,7 @@ package org.mixxx;
 
 import android.content.Context;
 import android.media.AudioAttributes;
+import android.media.AudioDeviceInfo;
 import android.media.AudioFocusRequest;
 import android.media.AudioManager;
 import android.os.Handler;
@@ -22,7 +23,10 @@ public final class AudioFocusBridge {
     private static AudioFocusRequest sRequest;
 
     private static final AudioManager.OnAudioFocusChangeListener sListener =
-            focusChange -> onAudioFocusChange(focusChange);
+            focusChange -> {
+                Log.i(TAG, "focusChange=" + focusChange);
+                onAudioFocusChange(focusChange);
+            };
 
     private AudioFocusBridge() {
     }
@@ -44,12 +48,13 @@ public final class AudioFocusBridge {
                     .build();
             sRequest = new AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
                     .setAudioAttributes(attributes)
-                    .setWillPauseWhenDucked(false)
+                    .setWillPauseWhenDucked(true)
                     .setOnAudioFocusChangeListener(sListener, sMainHandler)
                     .build();
         }
         int result = audioManager.requestAudioFocus(sRequest);
         Log.i(TAG, "requestAudioFocus result=" + result);
+        logOutputState();
         return result == AudioManager.AUDIOFOCUS_REQUEST_GRANTED;
     }
 
@@ -57,6 +62,36 @@ public final class AudioFocusBridge {
         AudioManager audioManager = sAudioManager;
         if (audioManager != null && sRequest != null) {
             audioManager.abandonAudioFocusRequest(sRequest);
+        }
+    }
+
+    public static void logOutputState() {
+        AudioManager audioManager = sAudioManager;
+        if (audioManager == null) {
+            return;
+        }
+        try {
+            int volume = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC);
+            Log.i(TAG, "STREAM_MUSIC volume=" + volume
+                    + "/" + audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
+                    + " muted=" + audioManager.isStreamMute(AudioManager.STREAM_MUSIC)
+                    + " fixed=" + audioManager.isVolumeFixed());
+            for (AudioDeviceInfo device : audioManager.getDevices(AudioManager.GET_DEVICES_OUTPUTS)) {
+                Log.i(TAG, "availableOutput id=" + device.getId()
+                        + " name=" + device.getProductName()
+                        + " type=" + device.getType()
+                        + " channels=" + java.util.Arrays.toString(device.getChannelCounts())
+                        + " sampleRates=" + java.util.Arrays.toString(device.getSampleRates()));
+                if (device.getType() == AudioDeviceInfo.TYPE_USB_DEVICE
+                        || device.getType() == AudioDeviceInfo.TYPE_USB_HEADSET
+                        || device.getType() == AudioDeviceInfo.TYPE_USB_ACCESSORY) {
+                    Log.i(TAG, "USB volume curve id=" + device.getId() + " dB="
+                            + audioManager.getStreamVolumeDb(
+                                    AudioManager.STREAM_MUSIC, volume, device.getType()));
+                }
+            }
+        } catch (RuntimeException e) {
+            Log.w(TAG, "Unable to read output diagnostics", e);
         }
     }
 

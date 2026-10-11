@@ -1,5 +1,6 @@
 package org.mixxx;
 
+import android.media.AudioManager;
 import android.os.Bundle;
 import android.view.WindowManager;
 import androidx.core.view.ViewCompat;
@@ -9,6 +10,12 @@ import androidx.core.view.WindowInsetsControllerCompat;
 import org.qtproject.qt.android.QtActivityBase;
 
 public class MainActivity extends QtActivityBase {
+    @Override
+    public void onResume() {
+        super.onResume();
+        setVolumeControlStream(AudioManager.STREAM_MUSIC);
+    }
+
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);

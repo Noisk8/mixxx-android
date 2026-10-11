@@ -61,20 +61,6 @@ WPushButton[value="1"]:hover {
   background-color: #30303a;
 }
 
-#DeckPlayButton {
-  background-color: #243b1a;
-  border: 1px solid #6ee128;
-  color: #6ee128;
-  font-weight: bold;
-}
-
-#DeckCueButton {
-  background-color: #3a2717;
-  border: 1px solid #eb870f;
-  color: #eb870f;
-  font-weight: bold;
-}
-
 /************************************************************************/
 /*     Deck                                                             */
 /************************************************************************/

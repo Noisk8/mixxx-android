@@ -72,6 +72,8 @@
 #endif
 #if defined(Q_OS_ANDROID)
 #include <QtCore/private/qandroidextras_p.h>
+
+#include "soundio/androidaudiofocus.h"
 #endif
 
 #if defined(Q_OS_LINUX) && QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
@@ -590,6 +592,10 @@ void CoreServices::initialize(QApplication* pApp) {
 
     m_pPlayerManager->addPreviewDeck();
 
+#ifdef Q_OS_ANDROID
+    m_pAudioFocus = std::make_unique<android::AudioFocus>(this, m_cmdlineArgs.getDeveloper());
+#endif
+
     m_pEffectsManager->setup();
 
 #ifdef __VINYLCONTROL__
@@ -912,6 +918,10 @@ void CoreServices::finalize() {
 
     Timer t("CoreServices::~CoreServices");
     t.start();
+
+#ifdef Q_OS_ANDROID
+    m_pAudioFocus.reset();
+#endif
 
 #ifdef MIXXX_USE_QML
     // Delete all the QML singletons in order to prevent controller leaks

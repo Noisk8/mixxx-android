@@ -2,7 +2,9 @@
 
 #include <QCoreApplication>
 #include <QJniObject>
+#include <QTimer>
 #include <QtCore/qcoreapplication_platform.h>
+#include <android/log.h>
 #include <utility>
 
 #include "control/controlobject.h"
@@ -14,6 +16,7 @@ constexpr int kMaxDecks = 16;
 // android.media.AudioManager.AUDIOFOCUS_LOSS and AUDIOFOCUS_LOSS_TRANSIENT
 constexpr int kFocusLoss = -1;
 constexpr int kFocusLossTransient = -2;
+constexpr int kFocusLossTransientCanDuck = -3;
 constexpr const char* kBridgeClass = "org/mixxx/AudioFocusBridge";
 
 mixxx::android::AudioFocus* s_pAudioFocus = nullptr;
@@ -22,7 +25,7 @@ mixxx::android::AudioFocus* s_pAudioFocus = nullptr;
 namespace mixxx {
 namespace android {
 
-AudioFocus::AudioFocus(QObject* pParent)
+AudioFocus::AudioFocus(QObject* pParent, bool diagnostics)
         : QObject(pParent) {
     s_pAudioFocus = this;
 
@@ -43,12 +46,17 @@ AudioFocus::AudioFocus(QObject* pParent)
         pPlay->connectValueChanged(this, &AudioFocus::updatePlayingState);
         m_playControls.push_back(std::move(pPlay));
     }
+
+    if (diagnostics) {
+        m_pDiagnosticTimer = std::make_unique<QTimer>(this);
+        m_pDiagnosticTimer->setInterval(5000);
+        connect(m_pDiagnosticTimer.get(), &QTimer::timeout, this, &AudioFocus::logAudioLevels);
+        m_pDiagnosticTimer->start();
+    }
 }
 
 AudioFocus::~AudioFocus() {
-    if (m_hasFocus) {
-        QJniObject::callStaticMethod<void>(kBridgeClass, "abandon", "()V");
-    }
+    QJniObject::callStaticMethod<void>(kBridgeClass, "abandon", "()V");
     s_pAudioFocus = nullptr;
 }
 
@@ -63,6 +71,10 @@ void AudioFocus::updatePlayingState() {
 
     if (anyPlaying && !m_hasFocus) {
         m_hasFocus = QJniObject::callStaticMethod<jboolean>(kBridgeClass, "request", "()Z");
+        if (!m_hasFocus) {
+            qWarning() << "Android audio focus denied; pausing decks";
+            pauseAllDecks();
+        }
     } else if (!anyPlaying && m_hasFocus) {
         QJniObject::callStaticMethod<void>(kBridgeClass, "abandon", "()V");
         m_hasFocus = false;
@@ -70,7 +82,8 @@ void AudioFocus::updatePlayingState() {
 }
 
 void AudioFocus::handleFocusChange(int focusChange) {
-    if (focusChange == kFocusLoss || focusChange == kFocusLossTransient) {
+    if (focusChange == kFocusLoss || focusChange == kFocusLossTransient ||
+            focusChange == kFocusLossTransientCanDuck) {
         // Another app took the audio output (e.g. a phone call): stop the mix
         // instead of playing over it, the DJ resumes manually.
         m_hasFocus = false;
@@ -78,7 +91,54 @@ void AudioFocus::handleFocusChange(int focusChange) {
     } else if (focusChange > 0) {
         m_hasFocus = true;
     }
-    // Ducking (AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK) keeps playing.
+}
+
+void AudioFocus::logAudioLevels() {
+    bool anyPlaying = false;
+    for (const auto& pPlay : m_playControls) {
+        anyPlaying |= pPlay->get() > 0.0;
+    }
+    if (!anyPlaying) {
+        return;
+    }
+
+    QJniObject::callStaticMethod<void>(kBridgeClass, "logOutputState", "()V");
+    const auto mixerValue = [](const char* name) {
+        const ConfigKey key(QStringLiteral("[Master]"), QString::fromLatin1(name));
+        return ControlObject::exists(key)
+                ? QString::number(ControlObject::get(key), 'g', 8)
+                : QStringLiteral("missing");
+    };
+    const auto logLevels = [](const QString& message) {
+        qDebug().noquote() << message;
+        __android_log_write(ANDROID_LOG_INFO, "MixxxAudioLevels", message.toUtf8().constData());
+    };
+    logLevels(QStringLiteral("Android audio levels: focus=%1 mainGain=%2 mainVu=%3 "
+                             "mainPeak=%4 headGain=%5 headMix=%6 balance=%7 "
+                             "headEnabled=%8 headSplit=%9")
+                      .arg(m_hasFocus)
+                      .arg(mixerValue("gain"))
+                      .arg(mixerValue("vu_meter"))
+                      .arg(mixerValue("peak_indicator"))
+                      .arg(mixerValue("headGain"))
+                      .arg(mixerValue("headMix"))
+                      .arg(mixerValue("balance"))
+                      .arg(mixerValue("headEnabled"))
+                      .arg(mixerValue("headSplit")));
+    for (const auto& pPlay : m_playControls) {
+        const auto group = pPlay->getKey().group;
+        const auto pfl = ControlObject::get(ConfigKey(group, QStringLiteral("pfl")));
+        if (pPlay->get() <= 0.0 && pfl <= 0.0) {
+            continue;
+        }
+        logLevels(QStringLiteral("Android audio deck: %1 pregain=%2 volume=%3 vu=%4 play=%5 pfl=%6")
+                          .arg(group)
+                          .arg(ControlObject::get(ConfigKey(group, QStringLiteral("pregain"))))
+                          .arg(ControlObject::get(ConfigKey(group, QStringLiteral("volume"))))
+                          .arg(ControlObject::get(ConfigKey(group, QStringLiteral("vu_meter"))))
+                          .arg(pPlay->get())
+                          .arg(pfl));
+    }
 }
 
 void AudioFocus::pauseAllDecks() {

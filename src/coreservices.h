@@ -26,6 +26,12 @@ struct LibraryScanResultSummary;
 
 namespace mixxx {
 
+#ifdef Q_OS_ANDROID
+namespace android {
+class AudioFocus;
+}
+#endif
+
 class ControlIndicatorTimer;
 class DbConnectionPool;
 class ScreensaverManager;
@@ -129,6 +135,9 @@ class CoreServices : public QObject {
     std::shared_ptr<EngineMixer> m_pEngine;
     std::shared_ptr<SoundManager> m_pSoundManager;
     std::shared_ptr<PlayerManager> m_pPlayerManager;
+#ifdef Q_OS_ANDROID
+    std::unique_ptr<android::AudioFocus> m_pAudioFocus;
+#endif
     std::shared_ptr<RecordingManager> m_pRecordingManager;
 #ifdef __BROADCAST__
     std::shared_ptr<BroadcastManager> m_pBroadcastManager;
