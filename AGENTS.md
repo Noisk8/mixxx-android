@@ -42,6 +42,13 @@ Any text (PR description, commit message body, code comments, documentation) tha
 autonomously by an AI Agent **must** be framed with an disclaimer that the text is autonomously generated
 by the AI Agent, at both the start and the end of that text block.
 
+## Android Release Naming
+
+Every Android release is named after a character from *The Simpsons*, for example
+"Comic Book Guy" or "Disco Stu". Set the name as `codename` in
+`packaging/android/release.json`. Do not reuse a character that already has a
+published tag, and change the codename together with the version.
+
 ## Key Architecture
 
 - **ControlObject/ControlProxy**: `[Group], key_name` inter-component communication.

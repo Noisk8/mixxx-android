@@ -136,6 +136,44 @@ Al iniciar la app, concede el permiso **"Acceso a todos los archivos"**
 (All files access) cuando Mixxx abra la pantalla de sistema correspondiente;
 sin él, la biblioteca no podrá leer tus carpetas de música.
 
+## Usar la app con la Pioneer DDJ-400: guía paso a paso
+
+> Sección redactada autónomamente por un agente de IA. Requiere revisión humana antes de publicación.
+
+**Estado:** la separación independiente de la preescucha (CUE en auriculares 3–4)
+todavía no está verificada físicamente. Sigue esta guía y anota lo que oigas.
+
+1. **Prepara el teléfono.** Android 15 o posterior con arquitectura ARM64. Instala la APK
+   y concede el permiso **Acceso a todos los archivos** cuando Mixxx lo pida.
+2. **Copia tu música** a una carpeta del teléfono, por ejemplo `Music`.
+3. **Conecta la DDJ-400** con un cable OTG o un hub USB-C alimentado, antes de abrir Mixxx.
+4. **Abre Mixxx** y acepta el permiso USB que aparece para la DDJ-400.
+5. **Agrega tu biblioteca.** En Preferencias, abre la configuración de biblioteca,
+   añade la carpeta de música y espera a que termine el escaneo.
+6. **Configura el audio.** En Preferencias → Sound Hardware, selecciona **Android Oboe**.
+   Asigna **Main** a los canales 1–2 y **Headphones** a los canales 3–4 del mismo
+   dispositivo DDJ-400. Detalles en la sección siguiente.
+7. **Activa el controlador.** En Preferencias → Controllers, habilita
+   **Pioneer DDJ-400** con el mapeo correspondiente.
+8. **Carga una pista.** Selecciónala en la biblioteca y pulsa **LOAD** en el deck
+   de la controladora.
+9. **Reproduce.** Pulsa **PLAY** y sube el fader del canal. Ajusta el volumen con
+   **MASTER LEVEL** y el volumen multimedia del teléfono.
+10. **Prueba la preescucha.** Pulsa **CUE** en el canal y gira **HEADPHONES MIXING**
+    hacia CUE. Compara lo que oyes en auriculares con lo que sale por RCA.
+11. **Termina la sesión.** Pausa, cierra Mixxx y desconecta la DDJ-400.
+
+**Si algo falla:**
+
+- **Sin sonido:** revisa el volumen multimedia del teléfono, el MASTER de la DDJ-400 y
+  que los canales de salida estén asignados.
+- **La controladora no responde:** revisa Preferencias → Controllers y que el mapeo
+  Pioneer DDJ-400 esté habilitado.
+- **Se corta al desconectar USB:** vuelve a conectar la controladora y espera un par de
+  segundos. Si no recupera el audio, cierra y reabre Mixxx.
+
+> Fin de la sección redactada autónomamente por un agente de IA.
+
 > **Aviso de autoría:** La siguiente sección fue redactada autónomamente por un agente de IA.
 
 ## Configurar el audio de la Pioneer DDJ-400
@@ -223,6 +261,33 @@ ubicación con `GTEST_ROOT`). También se preparó un workflow de GitHub Actions
 esas pruebas. El pipeline general heredado ya contiene una compilación Android.
 
 > Fin del bloque generado autónomamente por un agente de IA.
+
+---
+
+## Pruébala y cuéntanos
+
+> Sección redactada autónomamente por un agente de IA. Requiere revisión humana antes de publicación.
+
+Mixxx Android es experimental y necesita pruebas en más teléfonos y controladoras.
+Si la pruebas, tus comentarios son muy útiles:
+
+- **Abre un issue** en este repositorio con el modelo del teléfono, la versión de
+  Android, la controladora, la versión de la APK (`packaging/android/release.json`),
+  qué hiciste y qué pasó.
+- **Comenta en issues existentes** si tu hardware reproduce el mismo problema.
+- **Para problemas de audio**, adjunta la carpeta que genera
+  `tools/android_rca_cue_capture.sh`. Antes de subirla, revisa que no contenga rutas
+  ni nombres de pistas que no quieras compartir.
+
+Las pruebas que confirmen o descarten la separación RCA/CUE son especialmente valiosas.
+
+> Fin de la sección redactada autónomamente por un agente de IA.
+
+## Licencia
+
+Mixxx Android usa la misma licencia que Mixxx: **GNU General Public License versión 2
+o cualquier versión posterior (GPL-2.0-or-later)**. El texto completo está en
+[LICENSE](LICENSE). El código original de Mixxx es © sus autores.
 
 ---
 
