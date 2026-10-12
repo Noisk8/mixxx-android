@@ -1,5 +1,3 @@
-> **Nota:** este README fue redactado autónomamente por un Agente de IA (opencode).
-
 # mixxx-android
 
 Build **experimental** de [Mixxx](https://www.mixxx.org) — el software DJ gratuito y
@@ -124,7 +122,6 @@ build-android/android-build/build/outputs/apk/release/android-build-release-sign
 > El APK compilado se copia con el nombre definido en `packaging/android/release.json`;
 > actualmente, `Mixxx-Android-v0.7.1-Comic-Book-Guy.apk`. El script verifica firma,
 > versión interna y Android mínimo, y genera un archivo de checksum SHA-256.
-> **Fin de la nota redactada autónomamente por un Agente de IA (Copilot).**
 
 ## Instalar en el teléfono
 
@@ -136,45 +133,47 @@ Al iniciar la app, concede el permiso **"Acceso a todos los archivos"**
 (All files access) cuando Mixxx abra la pantalla de sistema correspondiente;
 sin él, la biblioteca no podrá leer tus carpetas de música.
 
-## Usar la app con la Pioneer DDJ-400: guía paso a paso
+## Usar la app con una controladora: guía paso a paso
 
-> Sección redactada autónomamente por un agente de IA. Requiere revisión humana antes de publicación.
+Esta guía sirve para cualquier controladora USB que Mixxx soporte. Los nombres de botones
+y mapeos dependen del modelo; consulta el manual de tu controladora y la lista de
+mapeos en Preferencias → Controllers.
 
 **Estado:** la separación independiente de la preescucha (CUE en auriculares 3–4)
-todavía no está verificada físicamente. Sigue esta guía y anota lo que oigas.
+está verificada sólo parcialmente y se investiga con la DDJ-400. Con otra controladora,
+prueba y reporta lo que oigas.
 
 1. **Prepara el teléfono.** Android 15 o posterior con arquitectura ARM64. Instala la APK
    y concede el permiso **Acceso a todos los archivos** cuando Mixxx lo pida.
 2. **Copia tu música** a una carpeta del teléfono, por ejemplo `Music`.
-3. **Conecta la DDJ-400** con un cable OTG o un hub USB-C alimentado, antes de abrir Mixxx.
-4. **Abre Mixxx** y acepta el permiso USB que aparece para la DDJ-400.
+3. **Conecta la controladora** con un cable OTG o un hub USB-C alimentado, antes de abrir Mixxx.
+4. **Abre Mixxx** y acepta el permiso USB que aparece para la controladora.
 5. **Agrega tu biblioteca.** En Preferencias, abre la configuración de biblioteca,
    añade la carpeta de música y espera a que termine el escaneo.
-6. **Configura el audio.** En Preferencias → Sound Hardware, selecciona **Android Oboe**.
-   Asigna **Main** a los canales 1–2 y **Headphones** a los canales 3–4 del mismo
-   dispositivo DDJ-400. Detalles en la sección siguiente.
-7. **Activa el controlador.** En Preferencias → Controllers, habilita
-   **Pioneer DDJ-400** con el mapeo correspondiente.
-8. **Carga una pista.** Selecciónala en la biblioteca y pulsa **LOAD** en el deck
-   de la controladora.
-9. **Reproduce.** Pulsa **PLAY** y sube el fader del canal. Ajusta el volumen con
-   **MASTER LEVEL** y el volumen multimedia del teléfono.
-10. **Prueba la preescucha.** Pulsa **CUE** en el canal y gira **HEADPHONES MIXING**
-    hacia CUE. Compara lo que oyes en auriculares con lo que sale por RCA.
-11. **Termina la sesión.** Pausa, cierra Mixxx y desconecta la DDJ-400.
+6. **Configura el audio.** En Preferencias → Sound Hardware, selecciona **Android Oboe**
+   y asigna las salidas que necesites. Si tu controladora tiene salida de auriculares
+   independiente, asígnala a un par de canales distinto del principal. Ver la sección
+   de audio más abajo.
+7. **Activa el controlador.** En Preferencias → Controllers, habilita tu controladora
+   y elige su mapeo.
+8. **Carga una pista.** Selecciónala en la biblioteca y cárgala en un deck desde la
+   controladora o desde la pantalla.
+9. **Reproduce.** Pulsa PLAY y sube el fader del canal. Ajusta el volumen general con
+   el control de master de tu controladora y el volumen multimedia del teléfono.
+10. **Prueba la preescucha.** Activa CUE en el canal y, si tu controladora tiene control
+    de mezcla de auriculares, llévalo hacia CUE. Compara lo que oyes en auriculares
+    con lo que sale por la salida principal.
+11. **Termina la sesión.** Pausa, cierra Mixxx y desconecta la controladora.
 
 **Si algo falla:**
 
-- **Sin sonido:** revisa el volumen multimedia del teléfono, el MASTER de la DDJ-400 y
+- **Sin sonido:** revisa el volumen multimedia del teléfono, el master de la controladora y
   que los canales de salida estén asignados.
 - **La controladora no responde:** revisa Preferencias → Controllers y que el mapeo
-  Pioneer DDJ-400 esté habilitado.
+  esté habilitado.
 - **Se corta al desconectar USB:** vuelve a conectar la controladora y espera un par de
   segundos. Si no recupera el audio, cierra y reabre Mixxx.
 
-> Fin de la sección redactada autónomamente por un agente de IA.
-
-> **Aviso de autoría:** La siguiente sección fue redactada autónomamente por un agente de IA.
 
 ## Configurar el audio de la Pioneer DDJ-400
 
@@ -222,11 +221,9 @@ independientes.
 > computador para ADB. Reconecta el cable al computador después de la prueba
 > para recopilar registros.
 
-> **Fin del bloque redactado autónomamente por un agente de IA.**
 
 ## Estado y compatibilidad de Android
 
-> Este bloque fue generado autónomamente por un agente de IA.
 
 La versión del port es **0.7.1 (Comic Book Guy)** y sigue siendo experimental.
 La DDJ-400 ya se probó físicamente: el usuario confirmó audio por RCA y auriculares,
@@ -260,7 +257,6 @@ Las pruebas de regresión del port se ejecutan con `bash tools/test_android_port
 ubicación con `GTEST_ROOT`). También se preparó un workflow de GitHub Actions para
 esas pruebas. El pipeline general heredado ya contiene una compilación Android.
 
-> Fin del bloque generado autónomamente por un agente de IA.
 
 ---
 
@@ -281,7 +277,6 @@ Si la pruebas, tus comentarios son muy útiles:
 
 Las pruebas que confirmen o descarten la separación RCA/CUE son especialmente valiosas.
 
-> Fin de la sección redactada autónomamente por un agente de IA.
 
 ## Licencia
 
@@ -298,4 +293,3 @@ o cualquier versión posterior (GPL-2.0-or-later)**. El texto completo está en
 - El código fuente de Mixxx es © sus autores, licencia **GPL-2.0-or-later**;
   ver <https://github.com/mixxxdj/mixxx>.
 
-> **Nota:** este README fue redactado autónomamente por un Agente de IA (opencode).
