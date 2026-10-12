@@ -262,7 +262,6 @@ esas pruebas. El pipeline general heredado ya contiene una compilación Android.
 
 ## Pruébala y cuéntanos
 
-> Sección redactada autónomamente por un agente de IA. Requiere revisión humana antes de publicación.
 
 Mixxx Android es experimental y necesita pruebas en más teléfonos y controladoras.
 Si la pruebas, tus comentarios son muy útiles:
@@ -288,7 +287,6 @@ o cualquier versión posterior (GPL-2.0-or-later)**. El texto completo está en
 
 ## Notas
 
-- El APK generado **no** está incluido en este repositorio; se compila localmente.
 - `android_env.sh` (con contraseñas) y `mixxx.keystore` están ignorados por git.
 - El código fuente de Mixxx es © sus autores, licencia **GPL-2.0-or-later**;
   ver <https://github.com/mixxxdj/mixxx>.
