@@ -42,6 +42,7 @@ class ControllerManager : public QObject {
 
     /// Prevent other parts of Mixxx from having to manually connect to our slots
     void setUpDevices() { emit requestSetUpDevices(); };
+    void reconnectAndroidMidi() { emit requestReconnectAndroidMidi(); }
 
     static QList<QString> getMappingPaths(UserSettingsPointer pConfig);
 
@@ -49,6 +50,7 @@ class ControllerManager : public QObject {
     void initialized();
     void devicesChanged();
     void requestSetUpDevices();
+    void requestReconnectAndroidMidi();
     void requestShutdown();
     void requestInitialize();
     void mappingApplied(bool applied);
@@ -66,12 +68,14 @@ class ControllerManager : public QObject {
     /// only runs on start-up but maybe should instead be signaled by the
     /// preferences dialog on apply, and only open/close changed devices
     void slotSetUpDevices();
+    void slotReconnectAndroidMidi();
     void slotShutdown();
     /// Calls poll() on all devices that have isPolling() true.
     void slotPollDevices();
 
   private:
-    void updateControllerList();
+    void updateControllerList(bool androidMidiOnly = false);
+    void setUpDevicesInternal(bool androidMidiOnly);
     void startPolling();
     void stopPolling();
     void pollIfAnyControllersOpen();

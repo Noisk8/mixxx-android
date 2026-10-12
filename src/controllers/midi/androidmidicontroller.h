@@ -1,9 +1,7 @@
 #pragma once
 
 #include "controllers/midi/midicontroller.h"
-
-// Length of the reassembly buffer for incoming SysEx messages in bytes
-#define MIXXX_ANDROID_MIDI_SYSEX_BUFFER_LEN 1024
+#include "controllers/midi/midistreamparser.h"
 
 /// Android (android.media.midi) based implementation of MidiController
 ///
@@ -22,6 +20,7 @@ class AndroidMidiController : public MidiController {
             int inputPorts,
             int outputPorts);
     ~AndroidMidiController() override;
+    void rebindDevice(int deviceId);
 
     PhysicalTransportProtocol getPhysicalTransportProtocol() const override {
         // android.media.midi.MidiDeviceInfo types:
@@ -76,7 +75,7 @@ class AndroidMidiController : public MidiController {
 
     void processByte(unsigned char byte, const mixxx::Duration& timestamp);
 
-    const int m_deviceId;
+    int m_deviceId;
     const QString m_manufacturer;
     const QString m_product;
     const QString m_serialNumber;
@@ -86,12 +85,5 @@ class AndroidMidiController : public MidiController {
     // Number of device ports we can receive from (device output ports)
     const int m_outputPorts;
 
-    // Streaming MIDI parser state
-    unsigned char m_status;
-    unsigned char m_data[2];
-    int m_dataIndex;
-    int m_dataLength;
-    bool m_bInSysex;
-    unsigned char m_cReceiveMsg[MIXXX_ANDROID_MIDI_SYSEX_BUFFER_LEN];
-    int m_cReceiveMsgIndex;
+    mixxx::MidiStreamParser m_parser;
 };

@@ -358,44 +358,12 @@ QJniObject ScreenSaverHelper::s_wakeLock = {};
 void ScreenSaverHelper::triggerUserActivity() {
 }
 void ScreenSaverHelper::inhibitInternal() {
-    if (!ScreenSaverHelper::s_wakeLock.isValid()) {
-        QJniObject context = QNativeInterface::QAndroidApplication::context();
-        QJniObject POWER_SERVICE =
-                QJniObject::getStaticObjectField(
-                        "android/content/Context",
-                        "POWER_SERVICE",
-                        "Ljava/lang/String;");
-        auto powerService = context.callObjectMethod("getSystemService",
-                "(Ljava/lang/String;)Ljava/lang/Object;",
-                POWER_SERVICE.object());
-        if (!powerService.isValid()) {
-            qDebug() << "powerService invalid";
-            return;
-        }
-
-        jint FULL_WAKE_LOCK =
-                QJniObject::getStaticField<jint>(
-                        "android/os/PowerManager",
-                        "FULL_WAKE_LOCK");
-        ScreenSaverHelper::s_wakeLock =
-                powerService.callObjectMethod("newWakeLock",
-                        "(ILjava/lang/String;)Landroid/os/PowerManager$WakeLock;",
-                        FULL_WAKE_LOCK,
-                        QJniObject::fromString("Mixxx").object<jstring>());
-        if (!ScreenSaverHelper::s_wakeLock.isValid()) {
-            __android_log_print(ANDROID_LOG_WARN, "mixxx", "powerService wakeLock invalid");
-            qWarning() << "ScreenSaverHelper::inhibitInternal - wakeLock invalid";
-            return;
-        }
-    }
-    ScreenSaverHelper::s_wakeLock.callMethod<void>("acquire");
+    QJniObject::callStaticMethod<void>("org/mixxx/MainActivity", "keepScreenOn", "(Z)V", true);
+    s_enabled = true;
 }
 void ScreenSaverHelper::uninhibitInternal() {
-    // QNativeInterface::QAndroidApplication::runOnAndroidMainThread([]() {
-    if (ScreenSaverHelper::s_wakeLock.isValid()) {
-        ScreenSaverHelper::s_wakeLock.callMethod<void>("release");
-    }
-    // }).waitForFinished();
+    QJniObject::callStaticMethod<void>("org/mixxx/MainActivity", "keepScreenOn", "(Z)V", false);
+    s_enabled = false;
 }
 #else
 void ScreenSaverHelper::triggerUserActivity()

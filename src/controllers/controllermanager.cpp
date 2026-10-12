@@ -21,6 +21,7 @@
 #endif
 
 #ifdef __ANDROID_MIDI__
+#include "controllers/midi/androidmidicontroller.h"
 #include "controllers/midi/androidmidienumerator.h"
 #endif
 
@@ -134,6 +135,7 @@ ControllerManager::ControllerManager(UserSettingsPointer pConfig)
             this,
             &ControllerManager::slotSetUpDevices);
     connect(this, &ControllerManager::requestShutdown, this, &ControllerManager::slotShutdown);
+    connect(this, &ControllerManager::requestReconnectAndroidMidi, this, &ControllerManager::slotReconnectAndroidMidi);
 
     // Signal that we should run slotInitialize once our event loop has started
     // up. invokeMethod with QueuedConnection will post an event to our event loop,
@@ -213,11 +215,11 @@ void ControllerManager::slotShutdown() {
     m_pThread->quit();
 }
 
-void ControllerManager::updateControllerList() {
+void ControllerManager::updateControllerList(bool androidMidiOnly) {
     DEBUG_ASSERT_THIS_QOBJECT_THREAD_AFFINITY();
-    // NOTE: Currently this function is only called on startup. If hotplug is added, changes to the
-    // controller list must be synchronized with dlgprefcontrollers to avoid dangling connections
-    // and possible crashes.
+    // Called at startup, by setUpDevices() and, on Android, by reconnectAndroidMidi() after a USB
+    // hotplug event. Listeners (dlgprefcontrollers, qmlpreferencesproxy) refresh from devicesChanged,
+    // so they must not keep Controller pointers across this call.
     auto locker = lockMutex(&m_mutex);
     if (m_enumerators.empty()) {
         qWarning() << "updateControllerList called but no enumerators have been added!";
@@ -232,7 +234,19 @@ void ControllerManager::updateControllerList() {
     locker.unlock();
 
     QList<Controller*> newDeviceList;
+    if (androidMidiOnly) {
+#ifdef __ANDROID_MIDI__
+        for (Controller* controller : getControllers()) {
+            if (!qobject_cast<AndroidMidiController*>(controller)) {
+                newDeviceList.append(controller);
+            }
+        }
+#endif
+    }
     for (ControllerEnumerator* pEnumerator : enumerators) {
+#ifdef __ANDROID_MIDI__
+        if (androidMidiOnly && !qobject_cast<AndroidMidiEnumerator*>(pEnumerator)) { continue; }
+#endif
         newDeviceList.append(pEnumerator->queryDevices());
     }
 
@@ -276,14 +290,28 @@ QString ControllerManager::getConfiguredMappingFileForDevice(const QString& name
 }
 
 void ControllerManager::slotSetUpDevices() {
+    setUpDevicesInternal(false);
+}
+
+void ControllerManager::slotReconnectAndroidMidi() {
+#ifdef __ANDROID_MIDI__
+    setUpDevicesInternal(true);
+#endif
+}
+
+void ControllerManager::setUpDevicesInternal(bool androidMidiOnly) {
     DEBUG_ASSERT_THIS_QOBJECT_THREAD_AFFINITY();
     qDebug() << "ControllerManager: Setting up devices";
 
-    updateControllerList();
+    stopPolling();
+    updateControllerList(androidMidiOnly);
     const QList<Controller*> deviceList = getControllerList(false, true);
     QStringList mappingPaths(getMappingPaths(m_pConfig));
 
     for (Controller* pController : deviceList) {
+#ifdef __ANDROID_MIDI__
+        if (androidMidiOnly && !qobject_cast<AndroidMidiController*>(pController)) { continue; }
+#endif
         QString name = pController->getName();
 
         if (pController->isOpen()) {

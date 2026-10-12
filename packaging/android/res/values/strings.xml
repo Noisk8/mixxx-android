@@ -1,0 +1,8 @@
+<resources>
+    <string name="mixxx_session">Mixxx</string>
+    <string name="mixxx_session_running">DJ session in progress</string>
+    <string name="mixxx_pause_session">Pause session</string>
+    <string name="mixxx_music_access">Access your music</string>
+    <string name="mixxx_music_access_message">Allow file access so Mixxx can read your music folders. Return to Mixxx after granting access, then choose a folder in Library preferences. You can cancel and grant access later.</string>
+    <string name="mixxx_open_settings">Open settings</string>
+</resources>

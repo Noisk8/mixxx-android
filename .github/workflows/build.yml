@@ -333,6 +333,11 @@ jobs:
         if: startsWith(matrix.artifacts_slug, 'android')
         run: |
           if [ -z "${ANDROID_SIGNING_KEYSTORE_BASE64}" ]; then
+            if [[ "${GITHUB_REF}" == refs/tags/android-v* ]]; then
+              # A temporary key changes the signature on every release and breaks in-place updates
+              echo "::error::Android release tags require the ANDROID_SIGNING_KEYSTORE_BASE64 secret"
+              exit 1
+            fi
             # If no signing key is available (e.g running on a fork), generate a temporary key
             keytool \
               -genkey \
@@ -809,6 +814,22 @@ jobs:
         shell: bash
         run: |
           echo "C:/Windows/System32;C:/ProgramData/Chocolatey/bin" >> $GITHUB_PATH
+
+      - name: Prepare Android update artifact with the stable signing identity
+        if: startsWith(matrix.artifacts_slug, 'android') && env.ANDROID_SIGNING_KEYSTORE_BASE64 != '' && github.repository == 'Noisk8/mixxx-android'
+        shell: bash
+        run: |
+          set -euo pipefail
+          apk_name=$(python3 tools/android_release.py name)
+          python3 tools/android_release.py verify --apk build/android-build/build/outputs/apk/release/android-build-release-signed.apk --sdk "$ANDROID_HOME"
+          mkdir android-release
+          cp build/android-build/build/outputs/apk/release/android-build-release-signed.apk "android-release/$apk_name"
+          (cd android-release && sha256sum "$apk_name" > "$apk_name.sha256")
+      - uses: actions/upload-artifact@v7
+        if: startsWith(matrix.artifacts_slug, 'android') && env.ANDROID_SIGNING_KEYSTORE_BASE64 != '' && github.repository == 'Noisk8/mixxx-android'
+        with:
+          name: android-release-arm64
+          path: android-release/
 
       - name: "Upload GitHub Actions artifacts"
         # The AppImage is uploaded by the dedicated "[AppImage] Upload AppImage"

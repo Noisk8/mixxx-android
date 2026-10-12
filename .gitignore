@@ -79,4 +79,5 @@ res/qrc_mixxx.cc
 /android_env.sh
 /mixxx.keystore
 /*.apk
+/*.apk.sha256
 /res/Mixxx-Manual.pdf

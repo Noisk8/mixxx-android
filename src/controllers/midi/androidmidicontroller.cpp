@@ -13,37 +13,6 @@ constexpr const char* kBridgeClass = "org/mixxx/MidiBridge";
 // starving the ControllerManager thread when a device floods us.
 constexpr int kMaxChunksPerPoll = 256;
 
-/// Number of data bytes that follow the given status byte, or -1 if the
-/// status byte is not a valid short message status (SysEx).
-int shortMessageDataLength(unsigned char status) {
-    if (status >= 0xF8) {
-        // System realtime messages carry no data bytes
-        return 0;
-    }
-    switch (status) {
-    case 0xF1: // MTC quarter frame
-    case 0xF3: // Song select
-        return 1;
-    case 0xF2: // Song position
-        return 2;
-    case 0xF4: // Undefined (reserved)
-    case 0xF5: // Undefined (reserved)
-    case 0xF6: // Tune request
-    case 0xF7: // EOX
-        return 0;
-    case 0xF0: // SysEx start -- not a short message
-        return -1;
-    default:
-        break;
-    }
-    const unsigned char opCode = status & 0xF0;
-    if (opCode == 0xC0 || opCode == 0xD0) {
-        // Program change and channel pressure carry one data byte
-        return 1;
-    }
-    // All other channel voice/mode messages carry two data bytes
-    return 2;
-}
 } // anonymous namespace
 
 AndroidMidiController::AndroidMidiController(int deviceId,
@@ -61,14 +30,7 @@ AndroidMidiController::AndroidMidiController(int deviceId,
           m_serialNumber(serialNumber),
           m_androidType(androidType),
           m_inputPorts(inputPorts),
-          m_outputPorts(outputPorts),
-          m_status(0),
-          m_dataIndex(0),
-          m_dataLength(0),
-          m_bInSysex(false),
-          m_cReceiveMsgIndex(0) {
-    m_data[0] = 0;
-    m_data[1] = 0;
+          m_outputPorts(outputPorts) {
     // We are an input device for Mixxx if we can receive data from the
     // controller (device output ports) and an output device if we can send
     // data to it (device input ports).
@@ -82,17 +44,21 @@ AndroidMidiController::~AndroidMidiController() {
     }
 }
 
+void AndroidMidiController::rebindDevice(int deviceId) {
+    if (m_deviceId == deviceId) { return; }
+    if (isOpen()) { close(); }
+    m_parser.reset();
+    m_deviceId = deviceId;
+}
+
 int AndroidMidiController::open(const QString& resourcePath) {
+    if (m_deviceId < 0) { return -2; }
     if (isOpen()) {
         qCWarning(m_logBase) << "Android MIDI device" << getName() << "already open";
         return -1;
     }
 
-    m_status = 0;
-    m_dataIndex = 0;
-    m_dataLength = 0;
-    m_bInSysex = false;
-    m_cReceiveMsgIndex = 0;
+    m_parser.reset();
 
     const bool ok = QJniObject::callStaticMethod<jboolean>(kBridgeClass,
             "open",
@@ -147,7 +113,9 @@ bool AndroidMidiController::poll() {
         QJniArray<jbyte> bytes(chunk);
         const qsizetype size = bytes.size();
         if (size <= 0) {
-            break;
+            m_parser.reset();
+            handled = true;
+            continue;
         }
         // MidiReceiver timestamps use an arbitrary nanosecond clock. Use our
         // own monotonic clock at arrival time instead so all messages share a
@@ -162,94 +130,28 @@ bool AndroidMidiController::poll() {
 }
 
 void AndroidMidiController::processByte(unsigned char byte, const mixxx::Duration& timestamp) {
-    // System realtime messages (0xF8..0xFF) may appear anywhere, even in the
-    // middle of a SysEx message or between the data bytes of a short message.
-    if (byte >= 0xF8) {
-        receivedShortMessage(byte, 0, 0, timestamp);
-        return;
-    }
-
-    if (m_bInSysex) {
-        if (byte == MidiUtils::opCodeValue(MidiOpCode::EndOfExclusive)) {
-            m_bInSysex = false;
-            const char* buffer = reinterpret_cast<const char*>(m_cReceiveMsg);
-            receive(QByteArray::fromRawData(buffer, m_cReceiveMsgIndex), timestamp);
-            m_cReceiveMsgIndex = 0;
-            return;
-        }
-        if (byte >= 0x80) {
-            // A status byte other than EOX aborts the SysEx message
-            m_bInSysex = false;
-            m_cReceiveMsgIndex = 0;
-            m_status = 0;
-            m_dataIndex = 0;
-            m_dataLength = 0;
-            qCWarning(m_logInput) << "Buggy MIDI device: SysEx interrupted!";
-            // Fall through to process the status byte as a new message
-        } else {
-            if (m_cReceiveMsgIndex < MIXXX_ANDROID_MIDI_SYSEX_BUFFER_LEN) {
-                m_cReceiveMsg[m_cReceiveMsgIndex++] = byte;
-            }
-            return;
-        }
-    }
-
-    if (byte >= 0x80) {
-        if (byte == MidiUtils::opCodeValue(MidiOpCode::SystemExclusive)) {
-            m_bInSysex = true;
-            m_cReceiveMsgIndex = 0;
-            m_status = 0;
-            m_dataIndex = 0;
-            m_dataLength = 0;
-            return;
-        }
-        const int dataLength = shortMessageDataLength(byte);
-        if (dataLength < 0) {
-            return;
-        }
-        // New status byte replaces any partially received message and
-        // establishes running status for channel messages.
-        m_status = byte;
-        m_dataLength = dataLength;
-        m_dataIndex = 0;
-        if (dataLength == 0) {
-            // System common message without data bytes
-            if (byte == MidiUtils::opCodeValue(MidiOpCode::TuneRequest)) {
-                receivedShortMessage(byte, 0, 0, timestamp);
-            }
-            // System common messages (and undefined/reserved messages 0xF4,
-            // 0xF5 and EOX outside of SysEx) clear the running status.
-            m_status = 0;
-        }
-        return;
-    }
-
-    // Data byte
-    if (m_status == 0 || m_dataLength <= 0) {
-        // Running status without a preceding status byte -- ignore
-        return;
-    }
-    m_data[m_dataIndex++] = byte;
-    if (m_dataIndex >= m_dataLength) {
-        receivedShortMessage(m_status,
-                m_data[0],
-                m_dataLength > 1 ? m_data[1] : 0,
+    const auto message = m_parser.processByte(byte);
+    switch (message.type) {
+    case mixxx::MidiStreamParser::MessageType::Short:
+        receivedShortMessage(message.status, message.data1, message.data2, timestamp);
+        break;
+    case mixxx::MidiStreamParser::MessageType::SysEx:
+        receive(QByteArray::fromRawData(
+                        reinterpret_cast<const char*>(message.sysexData),
+                        static_cast<int>(message.sysexSize)),
                 timestamp);
-        m_dataIndex = 0;
-        if (m_status >= 0xF0) {
-            // System common messages do not establish running status
-            m_status = 0;
-        }
-        // else: keep m_status for running status of channel messages
+        break;
+    case mixxx::MidiStreamParser::MessageType::None:
+        break;
     }
 }
 
 void AndroidMidiController::sendShortMsg(unsigned char status,
         unsigned char byte1,
         unsigned char byte2) {
-    const int dataLength = shortMessageDataLength(status);
+    const int dataLength = mixxx::MidiStreamParser::shortMessageDataLength(status);
     if (dataLength < 0) {
-        qCWarning(m_logOutput) << "Refusing to send SysEx via sendShortMsg";
+        qCWarning(m_logOutput) << "Refusing invalid or SysEx status via sendShortMsg";
         return;
     }
     QByteArray bytes;

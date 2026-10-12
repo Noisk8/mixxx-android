@@ -20,9 +20,7 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.ArrayBlockingQueue;
 
 /**
  * JNI bridge between the native Mixxx MIDI backend (AndroidMidiController)
@@ -59,7 +57,8 @@ public final class MidiBridge {
         MidiInputPort inputPort;
         MidiOutputPort outputPort;
         MidiReceiver receiver;
-        final ConcurrentLinkedQueue<Message> queue = new ConcurrentLinkedQueue<>();
+        final ArrayBlockingQueue<Message> queue =
+                new ArrayBlockingQueue<>(MAX_QUEUED_MESSAGES);
     }
 
     private static final Map<Integer, Connection> sConnections = new ConcurrentHashMap<>();
@@ -122,8 +121,10 @@ public final class MidiBridge {
             Log.w(TAG, "open: MidiManager unavailable");
             return false;
         }
-        if (sConnections.containsKey(deviceId)) {
-            return true;
+        Connection current = sConnections.get(deviceId);
+        if (current != null) {
+            return (!forInput || current.inputPort != null)
+                    && (!forOutput || current.outputPort != null);
         }
         if (Looper.myLooper() == Looper.getMainLooper()) {
             // openDevice() reports via a Handler; blocking here would deadlock.
@@ -136,65 +137,81 @@ public final class MidiBridge {
             return false;
         }
 
-        final MidiDevice[] result = new MidiDevice[1];
-        final CountDownLatch latch = new CountDownLatch(1);
-        mm.openDevice(info, device -> {
-            result[0] = device;
-            latch.countDown();
-        }, sMainHandler);
+        PendingMidiOpen<MidiDevice> pending = new PendingMidiOpen<>(MidiBridge::closeDevice);
+        MidiDevice device;
         try {
-            if (!latch.await(OPEN_TIMEOUT_MS, TimeUnit.MILLISECONDS)) {
-                Log.w(TAG, "open: timed out opening device " + deviceId);
-                return false;
-            }
+            mm.openDevice(info, pending::complete, sMainHandler);
+            device = pending.await(OPEN_TIMEOUT_MS);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             return false;
+        } catch (RuntimeException e) {
+            pending.cancel();
+            Log.w(TAG, "open: unable to open device " + deviceId, e);
+            return false;
         }
-        MidiDevice device = result[0];
         if (device == null) {
-            Log.w(TAG, "open: openDevice returned null for " + deviceId);
+            Log.w(TAG, "open: no device returned before timeout for " + deviceId);
             return false;
         }
 
         Connection conn = new Connection();
         conn.device = device;
-        boolean opened = false;
-        if (forOutput && info.getOutputPortCount() > 0) {
-            MidiOutputPort out = device.openOutputPort(0);
-            if (out != null) {
-                conn.outputPort = out;
-                conn.receiver = new MidiReceiver() {
-                    @Override
-                    public void onSend(byte[] data, int offset, int count, long timestamp) {
-                        if (count <= 0) {
-                            return;
+        try {
+            if (forOutput && info.getOutputPortCount() > 0) {
+                MidiOutputPort out = device.openOutputPort(0);
+                if (out != null) {
+                    conn.outputPort = out;
+                    conn.receiver = new MidiReceiver() {
+                        @Override
+                        public void onSend(byte[] data, int offset, int count, long timestamp) {
+                            if (count <= 0) {
+                                return;
+                            }
+                            Message message = new Message(
+                                    Arrays.copyOfRange(data, offset, offset + count), timestamp);
+                            if (!conn.queue.offer(message)) {
+                                conn.queue.clear();
+                                conn.queue.offer(new Message(new byte[0], 0));
+                                conn.queue.offer(message);
+                                Log.w(TAG, "MIDI input overflow; parser will resynchronize");
+                            }
                         }
-                        ConcurrentLinkedQueue<Message> queue = conn.queue;
-                        while (queue.size() >= MAX_QUEUED_MESSAGES) {
-                            queue.poll();
-                        }
-                        queue.add(new Message(
-                                Arrays.copyOfRange(data, offset, offset + count), timestamp));
-                    }
-                };
-                out.connect(conn.receiver);
-                opened = true;
-            }
-        }
-        if (forInput && info.getInputPortCount() > 0) {
-            MidiInputPort in = device.openInputPort(0);
-            if (in != null) {
-                conn.inputPort = in;
-                opened = true;
-            }
-        }
 
-        if (!opened) {
+                        @Override
+                        public void onFlush() {
+                            conn.queue.clear();
+                            conn.queue.offer(new Message(new byte[0], 0));
+                        }
+                    };
+                    out.connect(conn.receiver);
+                }
+            }
+            if (forInput && info.getInputPortCount() > 0) {
+                MidiInputPort in = device.openInputPort(0);
+                if (in != null) {
+                    conn.inputPort = in;
+                }
+            }
+
+        } catch (RuntimeException e) {
             closeConnection(conn);
+            Log.w(TAG, "open: unable to open MIDI ports for " + deviceId, e);
             return false;
         }
-        sConnections.put(deviceId, conn);
+        if ((!forInput && !forOutput)
+                || (forInput && conn.inputPort == null)
+                || (forOutput && conn.outputPort == null)) {
+            closeConnection(conn);
+            Log.w(TAG, "open: required MIDI port unavailable for " + deviceId);
+            return false;
+        }
+        Connection existing = sConnections.putIfAbsent(deviceId, conn);
+        if (existing != null) {
+            closeConnection(conn);
+            return (!forInput || existing.inputPort != null)
+                    && (!forOutput || existing.outputPort != null);
+        }
         Log.i(TAG, "opened device " + deviceId
                 + " inputPort=" + (conn.inputPort != null)
                 + " outputPort=" + (conn.outputPort != null));
@@ -290,9 +307,14 @@ public final class MidiBridge {
                 Log.w(TAG, "closing output port failed: " + e);
             }
         }
-        if (conn.device != null) {
+        closeDevice(conn.device);
+        conn.queue.clear();
+    }
+
+    private static void closeDevice(MidiDevice device) {
+        if (device != null) {
             try {
-                conn.device.close();
+                device.close();
             } catch (IOException e) {
                 Log.w(TAG, "closing device failed: " + e);
             }

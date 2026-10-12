@@ -592,10 +592,6 @@ void CoreServices::initialize(QApplication* pApp) {
 
     m_pPlayerManager->addPreviewDeck();
 
-#ifdef Q_OS_ANDROID
-    m_pAudioFocus = std::make_unique<android::AudioFocus>(this, m_cmdlineArgs.getDeveloper());
-#endif
-
     m_pEffectsManager->setup();
 
 #ifdef __VINYLCONTROL__
@@ -662,38 +658,11 @@ void CoreServices::initialize(QApplication* pApp) {
             dir.mkpath(".");
         }
 #elif defined(Q_OS_ANDROID)
-        // if(QOperatingSystemVersion::current() <
-        // QOperatingSystemVersion(QOperatingSystemVersion::Android, 11)) {
-        //     qDebug() << "it is less then Android 11 - ALL FILES permission
-        //     isn't possible!";
-        // }
         QString fd;
-        jboolean value = QJniObject::callStaticMethod<jboolean>(
-                "android/os/Environment", "isExternalStorageManager");
-        if (value == false) {
-            qDebug() << "requesting ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION";
-            QJniObject ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION =
-                    QJniObject::getStaticObjectField(
-                            "android/provider/Settings",
-                            "ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION",
-                            "Ljava/lang/String;");
-            QJniObject intent("android/content/Intent",
-                    "(Ljava/lang/String;)V",
-                    ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION.object());
-            QJniObject jniPath = QJniObject::fromString(
-                    QStringLiteral("package:%1").arg(ANDROID_PACKAGE_NAME));
-            QJniObject jniUri =
-                    QJniObject::callStaticObjectMethod("android/net/Uri",
-                            "parse",
-                            "(Ljava/lang/String;)Landroid/net/Uri;",
-                            jniPath.object<jstring>());
-            QJniObject jniResult = intent.callObjectMethod("setData",
-                    "(Landroid/net/Uri;)Landroid/content/Intent;",
-                    jniUri.object<jobject>());
-            QtAndroidPrivate::startActivity(intent, 0);
-        } else {
-            qDebug() << "Got ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION";
-        }
+        QJniObject::callStaticMethod<void>("org/mixxx/StorageBridge",
+                "requestAccess",
+                "(Landroid/content/Context;)V",
+                QNativeInterface::QAndroidApplication::context());
         fd = "/storage/emulated/0/Music/";
         QDir dir = fd;
         if (!dir.exists()) {
@@ -725,6 +694,9 @@ void CoreServices::initialize(QApplication* pApp) {
     // (long)
     qDebug() << "Creating ControllerManager";
     m_pControllerManager = std::make_shared<ControllerManager>(pConfig);
+#ifdef Q_OS_ANDROID
+    m_pAudioFocus = std::make_unique<android::AudioFocus>(m_pSoundManager.get(), m_pControllerManager.get(), this, m_cmdlineArgs.getDeveloper());
+#endif
 
     // Scan the library for new files and directories
     bool rescan = m_cmdlineArgs.getRescanLibrary() ||

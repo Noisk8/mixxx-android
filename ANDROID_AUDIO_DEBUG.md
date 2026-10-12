@@ -18,9 +18,12 @@ PortAudio/Oboe, el volumen multimedia de Android y el control físico de la DDJ-
 Se corrigió la inicialización del foco de audio: antes se creaba únicamente en
 la interfaz QML, por lo que la interfaz clásica no lo solicitaba. Ahora se crea
 en los servicios comunes y se destruye antes de los reproductores. Android recibe
-la indicación de pausar ante una petición temporal de atenuación; Mixxx pausa los
-decks y requiere que el DJ reanude manualmente. También pausa si Android rechaza
-la solicitud de foco. Los botones de volumen del móvil controlan STREAM_MUSIC.
+la indicación de entregar las peticiones temporales de atenuación al listener,
+evitando el ducking automático. Mixxx mantiene la mezcla ante `CAN_DUCK`, y pausa
+los reproductores ante una pérdida real o transitoria de foco; el DJ reanuda
+manualmente. También pausa si Android rechaza la solicitud. El seguimiento cubre
+decks, samplers y preescucha de biblioteca, incluidos reproductores agregados
+después del arranque. Los botones de volumen controlan STREAM_MUSIC.
 
 En modo `--developer`, cada cinco segundos mientras un deck reproduce se registran:
 
@@ -47,12 +50,22 @@ y `media.audio_policy` durante la conexión USB.
 
 Las mediciones se hacen en el hilo principal, fuera del callback de audio. No se
 modifican automáticamente las ganancias ni el volumen multimedia. El seguimiento
-de foco conserva el alcance previo: los decks existentes al iniciar; la reproducción
-exclusiva de samplers o preescucha de biblioteca aún requiere ampliar ese seguimiento.
+de foco se actualiza cuando cambia el número de decks, samplers o reproductores
+de preescucha. Las entradas de micrófono y auxiliares aún requieren una política
+de foco específica para sesiones sin reproducción de pistas.
 
 ## Prueba física
 
+La prueba RCA/CUE con criterios de aprobación y registro está en
+`packaging/android/qa/RCA_CUE_PROTOCOL.md`, con la captura en
+`tools/android_rca_cue_capture.sh`. Las instrucciones de esta sección son históricas.
+
 El APK de esta iteración se guarda como `Mixxx-Android-arm64-audio-debug.apk`.
+Los nombres de APK de esta sección identifican iteraciones históricas. La versión
+actual se genera desde `packaging/android/release.json` como
+`Mixxx-Android-v0.7.1-Comic-Book-Guy.apk`, con versión interna
+`0.7.1 (Comic Book Guy)` y `versionCode=10`. Los registros periódicos requieren
+configurar `-DANDROID_AUDIO_DIAGNOSTICS=ON` y recompilar.
 Se instala con `adb install -r Mixxx-Android-arm64-audio-debug.apk` cuando el
 teléfono esté autorizado y accesible por ADB. Conserva la versión Android 0.7-beta.
 

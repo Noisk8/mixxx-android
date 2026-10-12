@@ -9,6 +9,10 @@
 #include <QStandardPaths>
 #include <QUrl>
 #include <QtGlobal>
+#ifdef Q_OS_ANDROID
+#include <QJniObject>
+#include <QtCore/qcoreapplication_platform.h>
+#endif
 
 #include "control/controlproxy.h"
 #include "defs_urls.h"
@@ -477,11 +481,22 @@ void DlgPrefLibrary::resetLibraryFont() {
 }
 
 void DlgPrefLibrary::slotAddDir() {
+#ifdef Q_OS_ANDROID
+    const QJniObject context = QNativeInterface::QAndroidApplication::context();
+    if (!QJniObject::callStaticMethod<jboolean>("org/mixxx/StorageBridge", "hasAccess", "(Landroid/content/Context;)Z", context)) {
+        QJniObject::callStaticMethod<void>("org/mixxx/StorageBridge", "requestAccess", "(Landroid/content/Context;)V", context);
+        return;
+    }
+#endif
     QString fd = QFileDialog::getExistingDirectory(
             this,
             tr("Choose a music directory"),
             QStandardPaths::writableLocation(QStandardPaths::MusicLocation),
-            QFileDialog::ShowDirsOnly);
+            QFileDialog::ShowDirsOnly
+#ifdef Q_OS_ANDROID
+                    | QFileDialog::DontUseNativeDialog
+#endif
+    );
     if (!fd.isEmpty()) {
         if (m_pLibrary->requestAddDir(fd)) {
             populateDirList();

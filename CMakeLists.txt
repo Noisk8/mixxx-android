@@ -2412,15 +2412,30 @@ if(QT6)
     )
     set_target_properties(mixxx PROPERTIES QT_ANDROID_ABIS "${ANDROID_ABI}")
     set_target_properties(mixxx PROPERTIES QT_ANDROID_PACKAGE_NAME "org.mixxx")
-    set_target_properties(
-      mixxx
-      PROPERTIES QT_ANDROID_VERSION_NAME "${MIXXX_VERSION}"
-    )
+    set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
+      "${CMAKE_SOURCE_DIR}/packaging/android/release.json")
+    file(READ "${CMAKE_SOURCE_DIR}/packaging/android/release.json" ANDROID_RELEASE_JSON)
+    string(JSON ANDROID_RELEASE_VERSION GET "${ANDROID_RELEASE_JSON}" version)
+    string(JSON ANDROID_RELEASE_CODE GET "${ANDROID_RELEASE_JSON}" version_code)
+    string(JSON ANDROID_RELEASE_CODENAME GET "${ANDROID_RELEASE_JSON}" codename)
+    string(JSON ANDROID_RELEASE_MIN_SDK GET "${ANDROID_RELEASE_JSON}" min_sdk)
+    if(ANDROID_RELEASE_MIN_SDK LESS CMAKE_SYSTEM_VERSION)
+      message(FATAL_ERROR "Android min_sdk must cover the native API level ${CMAKE_SYSTEM_VERSION}")
+    endif()
     set_target_properties(
       mixxx
       PROPERTIES
-        QT_ANDROID_APPLICATION_ARGUMENTS "--qml --log-level debug --developer"
+        QT_ANDROID_VERSION_NAME "${ANDROID_RELEASE_VERSION} (${ANDROID_RELEASE_CODENAME})"
+        QT_ANDROID_VERSION_CODE "${ANDROID_RELEASE_CODE}"
+        QT_ANDROID_MIN_SDK_VERSION "${ANDROID_RELEASE_MIN_SDK}"
     )
+    option(ANDROID_AUDIO_DIAGNOSTICS "Enable Android audio diagnostics and developer mode" OFF)
+    if(ANDROID_AUDIO_DIAGNOSTICS)
+      set(ANDROID_APP_ARGUMENTS "--log-level debug --developer")
+    else()
+      set(ANDROID_APP_ARGUMENTS "--log-level info")
+    endif()
+    set(QT_ANDROID_APPLICATION_ARGUMENTS "${ANDROID_APP_ARGUMENTS}")
     qt_add_android_permission(mixxx
     NAME android.permission.ACCESS_NETWORK_STATE
     )
@@ -2994,6 +3009,9 @@ if(BUILD_TESTING)
     #TODO: make this build again
     #src/test/metaknob_link_test.cpp
     src/test/midicontrollertest.cpp
+    src/test/midistreamparser_test.cpp
+      src/test/audioframewriter_test.cpp
+    src/test/androidusbremap_test.cpp
     src/test/mixxxtest.cpp
     src/test/mock_networkaccessmanager.cpp
     src/test/musicbrainzrecordingstasktest.cpp
@@ -3863,7 +3881,7 @@ endif()
 
 # Android audio focus (android.media.AudioManager via org.mixxx.AudioFocusBridge)
 if(ANDROID)
-  target_sources(mixxx-lib PRIVATE src/soundio/androidaudiofocus.cpp)
+  target_sources(mixxx-lib PRIVATE src/soundio/androidaudiofocus.cpp src/soundio/androidaudiotrack.cpp)
 endif()
 
 # Protobuf

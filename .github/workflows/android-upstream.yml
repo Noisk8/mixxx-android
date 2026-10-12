@@ -1,0 +1,34 @@
+name: Android upstream compatibility report
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 15 * * 1'
+
+permissions:
+  contents: read
+
+jobs:
+  compare:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Compare the reviewed checkpoint and the current Mixxx source
+        shell: bash
+        run: |
+          set -euo pipefail
+          checkpoint=$(python3 -c 'import json; print(json.load(open("packaging/android/upstream.json"))["review_checkpoint"])')
+          [[ "$checkpoint" =~ ^[0-9a-f]{40}$ ]]
+          git fetch --no-tags https://github.com/mixxxdj/mixxx.git "$checkpoint"
+          git fetch --no-tags https://github.com/mixxxdj/mixxx.git main
+          mkdir upstream-report
+          git rev-parse FETCH_HEAD > upstream-report/upstream-revision.txt
+          git diff --stat "$checkpoint" FETCH_HEAD -- src/soundio src/engine src/controllers src/library src/preferences packaging/android CMakeLists.txt > upstream-report/changes-since-checkpoint.txt
+          git diff --stat FETCH_HEAD HEAD -- src/soundio src/engine src/controllers src/library src/preferences packaging/android CMakeLists.txt > upstream-report/port-differences.txt
+          cp packaging/android/upstream.json upstream-report/checkpoint.json
+      - uses: actions/upload-artifact@v7
+        with:
+          name: android-upstream-report
+          path: upstream-report/

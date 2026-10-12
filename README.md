@@ -3,7 +3,7 @@
 # mixxx-android
 
 Build **experimental** de [Mixxx](https://www.mixxx.org) — el software DJ gratuito y
-de código abierto — para **Android** (arm64-v8a, minSdk 28).
+de código abierto — para **Android 15 o posterior** (arm64-v8a, minSdk 35).
 
 Este repositorio contiene un snapshot del código fuente de Mixxx con los cambios
 necesarios para compilarlo como APK de Android y probarlo en teléfonos y tablets.
@@ -121,7 +121,9 @@ build-android/android-build/build/outputs/apk/release/android-build-release-sign
 ```
 
 > **Nota:** esta indicación fue redactada autónomamente por un Agente de IA (Copilot).
-> El APK compilado se copia como `Mixxx-Android-arm64-beta-0.5.apk` en la raíz del proyecto.
+> El APK compilado se copia con el nombre definido en `packaging/android/release.json`;
+> actualmente, `Mixxx-Android-v0.7.1-Comic-Book-Guy.apk`. El script verifica firma,
+> versión interna y Android mínimo, y genera un archivo de checksum SHA-256.
 > **Fin de la nota redactada autónomamente por un Agente de IA (Copilot).**
 
 ## Instalar en el teléfono
@@ -184,62 +186,43 @@ independientes.
 
 > **Fin del bloque redactado autónomamente por un agente de IA.**
 
-## Requisitos técnicos del dispositivo (resumen de madurez)
+## Estado y compatibilidad de Android
 
-### Estado actual: **MVP experimental** (beta 0.7)
+> Este bloque fue generado autónomamente por un agente de IA.
 
-Probado únicamente en **Redmi Note 15 Pro 5G** (Snapdragon 7s Gen 4, 8 GB RAM, Android 14/16, Mali-G615). Desde la beta 0.7 el renderer GPU **AllShader funciona a 60 FPS** (la causa de la inestabilidad eran los shaders GLSL desktop `#version 120` en los bundles `.qsb`, rechazados por el driver GLSL ES de Mali; ahora se hornea y selecciona la variante `300 es` con fallback automático a software). La DDJ-400 **no se ha probado aún conectada al móvil** (solo se ha verificado que Android la enumera por USB).
+La versión del port es **0.7.1 (Comic Book Guy)** y sigue siendo experimental.
+La DDJ-400 ya se probó físicamente: el usuario confirmó audio por RCA y auriculares,
+pero sigue informando un fallo de separación de preescucha. La enumeración USB y
+la apertura de cuatro canales no certifican todavía una salida CUE independiente.
 
-### Requisitos mínimos observados para ejecutar la app
+El APK actual requiere **ARM64 y Android 15/API 35 o posterior**. La compilación
+nativa usa API 35 y el binario enlaza funciones que no existen en Android anteriores;
+por ello ya no se anuncia Android 9 como compatible. Ampliar la compatibilidad exige
+recompilar el motor y sus dependencias para el API mínimo elegido y probarlo en
+esos dispositivos. Véase [SDK y NDK de Android](https://developer.android.com/ndk/guides/sdk-versions).
 
-| Componente | Mínimo observado | Recomendado para uso fluido |
-|------------|------------------|-----------------------------|
-| **Arquitectura** | ARM64 (arm64-v8a) | ARM64 |
-| **Android** | API 28 (Android 9) | API 33+ (Android 13+) |
-| **RAM** | 4 GB (app usa ~220 MB + decoders + BD) | ≥ 6 GB (≥ 8 GB para biblioteca grande) |
-| **GPU / Driver** | OpenGL ES 3.2 / Vulkan 1.1 estable | Mali-G610/Adreno 720 o superior |
-| **Almacenamiento** | 500 MB app + biblioteca | ≥ 2 GB libres |
-| **USB** | Host / OTG obligatorio | Hub OTG alimentado para DDJ-400 |
-| **Permisos** | `MANAGE_EXTERNAL_STORAGE`, `RECORD_AUDIO`, `USB_PERMISSION`, `MODIFY_AUDIO_SETTINGS`, `WAKE_LOCK` | Concedidos por el usuario |
+La interfaz Pioneered tiene un tamaño mínimo declarado de 480×420. Las cifras de
+RAM, temperatura, autonomía, latencia y fluidez deben medirse con una sesión DJ
+representativa. La compatibilidad de un teléfono o tablet se confirma mediante
+pruebas; el modelo de GPU por sí solo no basta.
 
-### Dispositivos probables compatibles (2024-2025)
+La identidad de cada release se mantiene en `packaging/android/release.json`:
+versión semántica, código Android creciente, nombre de un personaje de Los Simpson
+y API mínimo. Un cambio del nombre del archivo no cambia la versión instalada.
+`./build_android.sh` comprueba estos datos dentro del APK antes de copiarlo.
 
-| Gama | SoC típico | GPU | ¿Probable? |
-|------|------------|-----|------------|
-| Alta (Snapdragon 8 Gen 2/3, Dimensity 9200/9300) | Adreno 740/750, Mali-G715/720 | ✅ Sí |
-| Media-alta (Snapdragon 7/7s Gen 1-3, Dimensity 7000/8000) | Adreno 642L/720, Mali-G610/615 | ✅ Sí (tu Redmi entra aquí) |
-| Media (Snapdragon 6 Gen 1, Dimensity 1080/7050) | Adreno 710, Mali-G68/57 | ⚠️ Probar con ≥ 6 GB RAM |
-| Baja / 2021-2022 (Snapdragon 480/680, Helio G99) | Adreno 619, Mali-G57 MC2 | ❌ Riesgo alto (RAM 4 GB, GPU justa) |
+Para activar registros de audio durante una prueba, configura CMake con
+`-DANDROID_AUDIO_DIAGNOSTICS=ON`; las builds normales usan registros de nivel info.
+Consulta [ANDROID_AUDIO_DEBUG.md](ANDROID_AUDIO_DEBUG.md) para la prueba de CUE.
 
-**Tablets**: mismas reglas; ≥ 8″ aprovechan Pioneered (mínimo 480×420). Samsung Tab S9 / Xiaomi Pad 6 → ✅; tablets de 3-4 GB RAM → ⚠️.
+El diagnóstico, los riesgos pendientes y los criterios para una versión estable
+están en [ANDROID_PROJECT_AUDIT.md](ANDROID_PROJECT_AUDIT.md).
+Las pruebas de regresión del port se ejecutan con `bash tools/test_android_port.sh`
+(requieren Python 3, Java 17, g++ y las fuentes de GoogleTest; puede indicarse su
+ubicación con `GTEST_ROOT`). También se preparó un workflow de GitHub Actions para
+esas pruebas. El pipeline general heredado ya contiene una compilación Android.
 
-### Qué falta para considerar la app “estable” (checklist)
-
-| Área | Estado | Qué falta | Prioridad |
-|------|--------|-----------|-----------|
-| **Renderer GPU waveforms** | ✅ AllShader verificado en Mali-G615 (0 fallos de shader, 0% jank) | Validar en más GPUs (Adreno, Mali serie baja) y en la DDJ-400 por OTG | 🔴 Crítico |
-| **Frame-rate adaptativo** | Detección runtime: GPU→60 FPS, software→30 FPS | Opciones de 120 FPS y refresh-rate del display | 🔴 Crítico |
-| **Prueba DDJ-400 completa** | Solo audio por altavoz del móvil | Conectar DDJ-400 por OTG: validar Main 1-2, Headphones 3-4, MIDI, controles físicos | 🔴 Crítico |
-| **Renderer QML completo** | No usado en esta rama | Terminar migración a QML (skin LateNightQML) | 🟠 Alta |
-| **Pruebas multi-dispositivo** | Solo Redmi Note 15 Pro 5G | Matriz de 4-6 dispositivos (alta, media, tablet, foldable) | 🟠 Alta |
-| **Gestión de memoria** | 221 MB RSS en reposo | Perfilado con `heapprofd`/`perfetto`; liberar cachés de waveforms no usadas | 🟠 Alta |
-| **Ciclo de vida Android** | Básico | `AudioFocus`, liberación USB audio, restauración de estado | 🟠 Alta |
-| **Audio USB robusto** | Básico | Desconexión/reconexión en caliente, cambio sample-rate, permisos USB persistentes | 🟠 Alta |
-| **MIDI `android.media.midi`** | Enumeración + JNI | Latencia < 10 ms, sysex largo, reconexión | 🟠 Alta |
-| **Empaquetado AAB / Play Store** | APK local | Build reproducible, `bundletool`, AAB firmado, Play Integrity | 🟡 Media |
-| **Soporte x86_64 / ARM32** | Solo arm64-v8a | Añadir `x86_64` y opcional `armeabi-v7a` | 🟡 Media |
-| **CI / QA automatizado** | Build manual | GitHub Actions: build matrix, unit tests, UI tests | 🟢 Baja |
-
-### Estimación de esfuerzo para “estable”
-
-| Hito | Semanas-hombre |
-|------|----------------|
-| Renderer GPU + frame-rate adaptativo | 3-4 |
-| DDJ-400 end-to-end + MIDI/USB robusto | 2-3 |
-| QML completo + LateNightQML | 3-4 |
-| Matriz 6 dispositivos + CI | 3-4 |
-| AAB + Play Store | 1-2 |
-| **Total mínimo viable “estable”** | **12-17 semanas-hombre** (1-2 devs a tiempo completo ≈ 3-4 meses) |
+> Fin del bloque generado autónomamente por un agente de IA.
 
 ---
 

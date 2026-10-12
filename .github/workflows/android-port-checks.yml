@@ -1,0 +1,45 @@
+name: Android port regression checks
+
+on:
+  push:
+    paths:
+      - "packaging/android/**"
+      - "src/controllers/midi/midistreamparser.h"
+      - "src/test/midistreamparser_test.cpp"
+      - "src/soundio/**"
+      - "src/controllers/**"
+      - "src/preferences/dialog/**"
+      - "src/test/audioframewriter_test.cpp"
+      - "tools/android_release.py"
+      - "tools/android_session_report.py"
+      - "tools/test_android_port.sh"
+      - "tools/tests/**"
+      - ".github/workflows/android-port-checks.yml"
+  pull_request:
+    paths:
+      - "packaging/android/**"
+      - "src/controllers/midi/midistreamparser.h"
+      - "src/test/midistreamparser_test.cpp"
+      - "src/soundio/**"
+      - "src/controllers/**"
+      - "src/preferences/dialog/**"
+      - "src/test/audioframewriter_test.cpp"
+      - "tools/android_release.py"
+      - "tools/android_session_report.py"
+      - "tools/test_android_port.sh"
+      - "tools/tests/**"
+      - ".github/workflows/android-port-checks.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  regression:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install host test dependencies
+        run: sudo apt-get update && sudo apt-get install -y libgtest-dev openjdk-17-jdk
+      - name: Test Android port
+        run: bash tools/test_android_port.sh

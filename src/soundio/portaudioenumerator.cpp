@@ -18,10 +18,9 @@
 #include <android/log.h>
 #include <jni.h>
 #include <pa_oboe.h>
-#include <pthread.h>
-#include <sys/syscall.h>
 
 #include <QJniObject>
+#include "soundio/androidaudiotrack.h"
 #endif
 
 typedef PaError (*SetJackClientName)(const char* name);
@@ -38,6 +37,11 @@ PortAudioEnumerator::~PortAudioEnumerator() {
 
 void PortAudioEnumerator::initialize() {
     PaError err;
+#ifdef Q_OS_ANDROID
+    struct UsbOutput { QString name; int id; int sampleRate; };
+    std::vector<UsbOutput> usbOutputs;
+    static bool oboeRegistered = false;
+#endif
     if (m_initialized) {
         return;
     }
@@ -50,7 +54,7 @@ void PortAudioEnumerator::initialize() {
 #ifdef Q_OS_IOS
     mixxx::initializeAVAudioSession();
 #elif defined(Q_OS_ANDROID)
-    QNativeInterface::QAndroidApplication::runOnAndroidMainThread([]() {
+    QNativeInterface::QAndroidApplication::runOnAndroidMainThread([&usbOutputs]() {
         QJniObject context = QNativeInterface::QAndroidApplication::context();
         QJniObject AUDIO_SERVICE =
                 QJniObject::getStaticObjectField(
@@ -110,7 +114,7 @@ void PortAudioEnumerator::initialize() {
             return std::nullopt;
         };
 
-        auto const parse = [supportedFriendlyName](PaOboe_Direction direction,
+        auto const parse = [supportedFriendlyName, &usbOutputs](PaOboe_Direction direction,
                                    QJniArray<QJniObject>& devices) {
             for (const auto& device : devices) {
                 jint type = device->callMethod<jint>("getType");
@@ -156,6 +160,12 @@ void PortAudioEnumerator::initialize() {
                          << "- ChannelCount:" << channelCount
                          << channelCounts.size()
                          << "- SampleRate:" << sampleRate;
+                if (direction == PaOboe_Direction::Output && channelCount == 4
+                        && (type == 11 || type == 12 || type == 22)) {
+                    usbOutputs.push_back({name, id, sampleRate});
+                    continue;
+                }
+                if (oboeRegistered) { continue; }
                 auto result = PaOboe_RegisterDevice(name.toStdString().c_str(),
                         id,
                         direction,
@@ -197,23 +207,9 @@ void PortAudioEnumerator::initialize() {
         qDebug() << "audioManager outputFramePerBuffer:" << outputFramePerBuffer;
         PaOboe_SetNativeBufferSize(outputFramePerBuffer);
     }).waitForFinished();
+    oboeRegistered = true;
     PaOboe_SetNumberOfBuffers(4);
 
-    // The following snippets pins the audio thread to a performance core
-    int32_t thread32 = gettid();
-    uint mask = 0b10000;
-    cpu_set_t cpuset;
-    CPU_ZERO(&cpuset);
-    for (uint32_t i = 0; i < 32; ++i) {
-        if ((mask >> i) & 1) {
-            CPU_SET(i, &cpuset);
-        }
-    }
-    if (sched_setaffinity(thread32, sizeof(cpu_set_t), &cpuset) != 0) {
-        __android_log_print(ANDROID_LOG_WARN, "mixxx", "Error setting CPU affinity: %d", errno);
-    } else {
-        __android_log_print(ANDROID_LOG_VERBOSE, "mixxx", "CPU affinity set");
-    }
 #endif
     err = Pa_Initialize();
     m_initialized = true;
@@ -267,6 +263,9 @@ void PortAudioEnumerator::initialize() {
             double  defaultSampleRate
          */
         const auto deviceTypeId = paApiIndexToTypeId.value(deviceInfo->hostApi);
+#ifdef Q_OS_ANDROID
+        if (deviceTypeId == paOboe && deviceInfo->maxOutputChannels > 2) { continue; }
+#endif
         auto currentDevice = QSharedPointer<SoundDevicePortAudio>::create(
                 m_pConfig, m_pSoundManager, deviceInfo, deviceTypeId, i);
         m_devices.push_back(currentDevice);
@@ -276,6 +275,13 @@ void PortAudioEnumerator::initialize() {
         }
     }
 
+    m_apis.clear();
+#ifdef Q_OS_ANDROID
+    for (const auto& output : usbOutputs) {
+        m_devices.push_back(QSharedPointer<mixxx::android::UsbSoundDevice>::create(
+                m_pConfig, m_pSoundManager, output.id, output.name, output.sampleRate));
+    }
+#endif
     for (PaHostApiIndex i = 0; i < Pa_GetHostApiCount(); i++) {
         const PaHostApiInfo* api = Pa_GetHostApiInfo(i);
         if (api && std::strcmp(api->name, "skeleton implementation")) {

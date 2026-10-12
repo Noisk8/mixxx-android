@@ -1,0 +1,8 @@
+<resources>
+    <string name="mixxx_session">Mixxx</string>
+    <string name="mixxx_session_running">Sesión DJ en curso</string>
+    <string name="mixxx_pause_session">Pausar sesión</string>
+    <string name="mixxx_music_access">Acceder a tu música</string>
+    <string name="mixxx_music_access_message">Permite el acceso a archivos para que Mixxx pueda leer tus carpetas de música. Regresa a Mixxx después de conceder el acceso y elige una carpeta en las preferencias de Biblioteca. Puedes cancelar y concederlo después.</string>
+    <string name="mixxx_open_settings">Abrir ajustes</string>
+</resources>

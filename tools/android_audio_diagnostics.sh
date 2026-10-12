@@ -17,12 +17,17 @@ if ! "$adb_bin" get-state >/dev/null 2>&1; then
 fi
 
 mkdir -p "$output_dir"
-for service in audio media.audio_flinger media.audio_policy midi usb; do
+for service in audio media.audio_flinger media.audio_policy midi usb thermalservice power battery; do
     "$adb_bin" shell dumpsys "$service" >"$output_dir/$service.txt" 2>&1 || true
 done
+"$adb_bin" shell dumpsys meminfo org.mixxx >"$output_dir/memory.txt" 2>&1 || true
+"$adb_bin" shell dumpsys activity services org.mixxx >"$output_dir/playback-service.txt" 2>&1 || true
+"$adb_bin" pull /sdcard/Android/data/org.mixxx/files/diagnostics "$output_dir/sessions" \
+    >"$output_dir/session-copy.txt" 2>&1 || true
 
 "$adb_bin" logcat -d -v threadtime \
     'MixxxAudioFocus:V' 'MixxxAudioLevels:V' 'MixxxAudioRoutes:V' 'MixxxMidi:V' \
+    'MixxxSession:V' 'MixxxPlayback:V' \
     'mixxx:V' 'AudioFlinger:V' 'AudioPolicyManager:V' \
     'AAudio:V' 'AudioTrack:V' 'OboeAudio:V' '*:S' \
     >"$output_dir/audio-logcat.txt"

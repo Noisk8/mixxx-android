@@ -253,7 +253,11 @@ void SoundManager::clearDeviceList(bool sleepAfterClosing) {
     m_pErrorDevice.clear();
 
     // deinitialize in case of PortAudio so the devices are updated
-    if (isPipewireSelected()) {
+    if (isPipewireSelected()
+#ifdef Q_OS_ANDROID
+            || m_config.getAPI() == SoundManagerConfig::kAPIOboe
+#endif
+    ) {
         m_pEnumerator->deinitialize();
     }
 }

@@ -5,6 +5,7 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QtCore/qcoreapplication_platform.h>
+#include <utility>
 
 #include "controllers/midi/androidmidicontroller.h"
 #include "moc_androidmidienumerator.cpp"
@@ -35,15 +36,12 @@ AndroidMidiEnumerator::~AndroidMidiEnumerator() {
 QList<Controller*> AndroidMidiEnumerator::queryDevices() {
     qDebug() << "Scanning Android MIDI devices:";
 
-    qDeleteAll(m_devices);
-    m_devices.clear();
-
     const QJniObject json = QJniObject::callStaticObjectMethod(kBridgeClass,
             "listDevices",
             "()Ljava/lang/String;");
     if (!json.isValid()) {
         qWarning() << "AndroidMidiEnumerator: MidiBridge.listDevices() failed";
-        return m_devices;
+        return {};
     }
 
     QJsonParseError parseError = {};
@@ -51,10 +49,11 @@ QList<Controller*> AndroidMidiEnumerator::queryDevices() {
     if (parseError.error != QJsonParseError::NoError || !doc.isArray()) {
         qWarning() << "AndroidMidiEnumerator: could not parse device list:"
                    << parseError.errorString();
-        return m_devices;
+        return {};
     }
 
     const QJsonArray devices = doc.array();
+    QList<Controller*> active;
     for (const QJsonValue& value : devices) {
         const QJsonObject o = value.toObject();
         const int deviceId = o.value(QStringLiteral("id")).toInt(-1);
@@ -82,14 +81,34 @@ QList<Controller*> AndroidMidiEnumerator::queryDevices() {
                  << "in" << inputPorts
                  << "out" << outputPorts;
 
-        m_devices.push_back(new AndroidMidiController(deviceId,
+        AndroidMidiController* controller = nullptr;
+        for (Controller* existing : std::as_const(m_devices)) {
+            if (!active.contains(existing) && existing->getName() == name
+                    && existing->getVendorString() == manufacturer
+                    && existing->getProductString() == product
+                    && existing->getSerialNumber() == serialNumber) {
+                controller = static_cast<AndroidMidiController*>(existing);
+                controller->rebindDevice(deviceId);
+                break;
+            }
+        }
+        if (!controller) {
+            controller = new AndroidMidiController(deviceId,
                 name,
                 manufacturer,
                 product,
                 serialNumber,
                 androidType,
                 inputPorts,
-                outputPorts));
+                outputPorts);
+            m_devices.push_back(controller);
+        }
+        active.push_back(controller);
     }
-    return m_devices;
+    for (Controller* controller : std::as_const(m_devices)) {
+        if (!active.contains(controller)) {
+            static_cast<AndroidMidiController*>(controller)->rebindDevice(-1);
+        }
+    }
+    return active;
 }
