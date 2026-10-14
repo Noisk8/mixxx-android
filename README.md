@@ -8,6 +8,15 @@ de código abierto — para **Android** (arm64-v8a, minSdk 28).
 Este repositorio contiene un snapshot del código fuente de Mixxx con los cambios
 necesarios para compilarlo como APK de Android y probarlo en teléfonos y tablets.
 
+## Cómo orientarte en este README
+
+- **Si eres usuario y solo quieres instalar/usar la app**, ve a:
+  - «[Instalar la app en el teléfono (usuarios)](#instalar-la-app-en-el-teléfono-usuarios)»
+  - «[Notas](#notas)»
+- **Si eres desarrollador y quieres compilar o modificar la app**, ve a:
+  - «[Para desarrolladores (requisitos y compilación)](#para-desarrolladores-requisitos-y-compilación)»
+  - «[Compilar](#compilar)»
+
 ## Contenido
 
 Scripts de compilación:
@@ -28,7 +37,10 @@ Cambios experimentales respecto al código original de Mixxx:
 - Compilación con `-DPIPEWIRE=OFF` (imprescindible: PipeWire no existe en
   Android y rompe el enlace).
 
-## Requisitos
+## Para desarrolladores (requisitos y compilación)
+
+> **Usuarios finales:** esta sección (y la siguiente) es para quienes van a **compilar o modificar** Mixxx.
+> Si solo quieres **usar la app**, salta a «[Instalar la app en el teléfono (usuarios)](#instalar-la-app-en-el-teléfono-usuarios)» y a «[Notas](#notas)».
 
 - Linux (probado en **Ubuntu 24.04**), unos 25 GB de disco libre y 8 GB de RAM
 
@@ -80,6 +92,22 @@ en otra ruta, edita `android_env.sh` con tus rutas.
 > instala los paquetes de apt, acepta las licencias del SDK y descarga el
 > NDK.
 
+### Instalación automática de dependencias (recomendado)
+
+Se incluye `setup_dev_environment.sh` en la raíz del proyecto. Detecta Ubuntu/Debian,
+Fedora/RHEL y Arch Linux, instala los paquetes de sistema correspondientes,
+configura Android SDK/NDK, genera `android_env.sh`, crea un keystore de desarrollo
+y (si se puede) instala `pre-commit`.
+
+```bash
+chmod +x setup_dev_environment.sh
+./setup_dev_environment.sh
+```
+
+> El script pide `sudo` la primera vez y descarga Android SDK/NDK.
+> Si tu distribución no es compatible o no quieres usarlo, sigue los pasos
+> manuales de las secciones anteriores.
+
 ## Compilar
 
 ### 1. Variables de entorno
@@ -122,7 +150,7 @@ build-android/android-build/build/outputs/apk/release/android-build-release-sign
 
 También se copia como `Mixxx-Android-arm64.apk` en la raíz del proyecto.
 
-## Instalar en el teléfono
+## Instalar la app en el teléfono (usuarios)
 
 ```bash
 adb install -r build-android/android-build/build/outputs/apk/release/android-build-release-signed.apk
