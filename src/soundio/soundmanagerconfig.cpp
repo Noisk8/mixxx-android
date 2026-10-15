@@ -582,6 +582,20 @@ void SoundManagerConfig::loadDefaults(SoundManager* soundManager, unsigned int f
                         mixxx::audio::ChannelCount::stereo(),
                         0);
                 addOutput(pDevice->getDeviceId(), mainOut);
+#ifdef Q_OS_ANDROID
+                // DJ controllers expose four USB channels: stereo Main plus
+                // stereo headphones. Register the cue output alongside Main so
+                // that PFL already has a destination on a fresh configuration;
+                // without it, the phones jack of the controller only carries
+                // the hardware master mix.
+                if (pDevice->getNumOutputChannels() >= 4) {
+                    AudioOutput cueOut(AudioPathType::Headphones,
+                            2,
+                            mixxx::audio::ChannelCount::stereo(),
+                            0);
+                    addOutput(pDevice->getDeviceId(), cueOut);
+                }
+#endif
                 defaultSampleRate = pDevice->getDefaultSampleRate();
                 break;
             }

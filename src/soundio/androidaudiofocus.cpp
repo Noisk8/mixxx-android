@@ -52,10 +52,28 @@ AudioFocus::AudioFocus(SoundManager* soundManager, ControllerManager* controller
     m_pHardwareTimer->setInterval(1000);
     connect(m_pHardwareTimer.get(), &QTimer::timeout, this, [this] {
         const int changes = std::exchange(m_hardwareChanges, 0);
+        __android_log_print(ANDROID_LOG_INFO, "MixxxAudioRoutes",
+                "Native hardware refresh timer fired flags=%d", changes);
+        qInfo() << "Android hardware refresh fired; flags=" << changes;
         if (changes & 1) {
             auto config = m_soundManager->getConfig();
+            __android_log_print(ANDROID_LOG_INFO, "MixxxAudioRoutes",
+                    "Refreshing audio devices; selected API=%s",
+                    config.getAPI().toUtf8().constData());
+            qInfo() << "Android audio refresh before enumerate; API=" << config.getAPI();
             m_soundManager->clearAndQueryDevices();
             const auto devices = m_soundManager->getDeviceList(config.getAPI(), true, true);
+            for (const auto& device : devices) {
+                __android_log_print(ANDROID_LOG_INFO, "MixxxAudioRoutes",
+                        "Enumerated audio device: %s API=%s outputs=%d",
+                        device->getDisplayName().toUtf8().constData(),
+                        device->getHostAPI().toUtf8().constData(),
+                        static_cast<int>(device->getNumOutputChannels()));
+                qInfo() << "Android audio refresh device="
+                        << device->getDisplayName()
+                        << "outputs=" << device->getNumOutputChannels()
+                        << "API=" << device->getHostAPI();
+            }
             std::vector<SoundDeviceId> available;
             available.reserve(devices.size());
             for (const auto& device : devices) {
@@ -271,6 +289,10 @@ void AudioFocus::stopPlayback() {
 }
 
 void AudioFocus::handleHardwareChange(int flags) {
+    __android_log_print(ANDROID_LOG_INFO, "MixxxAudioRoutes",
+            "Native hardware change queued flags=%d audioFocus=%d timer=%d",
+            flags, s_pAudioFocus != nullptr, m_pHardwareTimer != nullptr);
+    qInfo() << "Android hardware change received; flags=" << flags;
     if (flags & 4) {
         stopPlayback();
     }

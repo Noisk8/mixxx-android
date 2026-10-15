@@ -141,6 +141,8 @@ void onAudioFocusChange(JNIEnv*, jclass, jint focusChange) {
 Q_DECLARE_JNI_NATIVE_METHOD(onAudioFocusChange)
 
 void onHardwareChanged(JNIEnv*, jclass, jint flags) {
+    __android_log_print(ANDROID_LOG_INFO, "MixxxAudioRoutes",
+            "JNI hardware callback received flags=%d", flags);
     mixxx::android::hardwareChanged(flags);
 }
 Q_DECLARE_JNI_NATIVE_METHOD(onHardwareChanged)

@@ -4,6 +4,8 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.hardware.usb.UsbConstants;
+import android.hardware.usb.UsbDevice;
 import android.media.AudioDeviceCallback;
 import android.media.AudioDeviceInfo;
 import android.media.AudioManager;
@@ -11,6 +13,7 @@ import android.media.midi.MidiDeviceInfo;
 import android.media.midi.MidiManager;
 import android.os.Handler;
 import android.os.Looper;
+import android.util.Log;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -25,10 +28,21 @@ public final class HardwareBridge {
         @Override public void onAudioDevicesRemoved(AudioDeviceInfo[] devices) { refreshAudio(); }
     };
     private static final MidiManager.DeviceCallback MIDI_CALLBACK = new MidiManager.DeviceCallback() {
-        @Override public void onDeviceAdded(MidiDeviceInfo device) { onHardwareChanged(HardwareChanges.MIDI); }
+        @Override public void onDeviceAdded(MidiDeviceInfo device) {
+            int flags = midiHardwareChangeFlags(device);
+            Log.i("MixxxAudioRoutes", "USB MIDI device added: "
+                    + device.getProperties().getString("name") + " flags=" + flags);
+            onHardwareChanged(flags & HardwareChanges.MIDI);
+            if ((flags & HardwareChanges.AUDIO) != 0) {
+                retryUsbAudioEnumeration(0);
+            }
+        }
         @Override public void onDeviceRemoved(MidiDeviceInfo device) {
             MidiBridge.close(device.getId());
-            onHardwareChanged(HardwareChanges.MIDI);
+            int flags = midiHardwareChangeFlags(device);
+            Log.i("MixxxAudioRoutes", "USB MIDI device removed: "
+                    + device.getProperties().getString("name") + " flags=" + flags);
+            onHardwareChanged(flags);
         }
     };
     private static final BroadcastReceiver NOISY = new BroadcastReceiver() {
@@ -38,6 +52,46 @@ public final class HardwareBridge {
     };
 
     private HardwareBridge() { }
+
+    private static int midiHardwareChangeFlags(MidiDeviceInfo device) {
+        int flags = HardwareChanges.MIDI;
+        if (device.getType() != MidiDeviceInfo.TYPE_USB) {
+            return flags;
+        }
+        UsbDevice usbDevice = (UsbDevice) device.getProperties().getParcelable("usb_device");
+        if (usbDevice == null) {
+            return flags;
+        }
+        for (int index = 0; index < usbDevice.getInterfaceCount(); index++) {
+            int interfaceClass = usbDevice.getInterface(index).getInterfaceClass();
+            Log.i("MixxxAudioRoutes", "USB interface " + index + " class=" + interfaceClass);
+            if (interfaceClass == UsbConstants.USB_CLASS_AUDIO) {
+                return flags | HardwareChanges.AUDIO;
+            }
+        }
+        return flags;
+    }
+
+    private static void retryUsbAudioEnumeration(int attempt) {
+        if (audio == null) {
+            return;
+        }
+        Set<Integer> current = outputs();
+        int flags = HardwareChanges.audioOutputs(usbOutputs, current);
+        usbOutputs.clear();
+        usbOutputs.addAll(current);
+        if (flags != 0) {
+            Log.i("MixxxAudioRoutes", "USB audio outputs now available: " + current);
+            onHardwareChanged(flags);
+            return;
+        }
+        Log.i("MixxxAudioRoutes", "USB audio enumeration attempt " + (attempt + 1)
+                + " found outputs=" + current);
+        onHardwareChanged(HardwareChanges.AUDIO);
+        if (attempt < 3) {
+            MAIN.postDelayed(() -> retryUsbAudioEnumeration(attempt + 1), 500);
+        }
+    }
 
     private static boolean isUsb(AudioDeviceInfo device) {
         return device.getType() == AudioDeviceInfo.TYPE_USB_DEVICE

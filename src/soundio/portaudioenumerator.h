@@ -31,6 +31,13 @@ class PortAudioEnumerator : public SoundDeviceEnumerator {
 
     std::vector<SoundDevicePointer> m_devices;
     mixxx::audio::SampleRate m_jackSampleRate;
+#ifdef Q_OS_ANDROID
+    // Tracks whether the devices enumerated from AudioManager were already
+    // handed to PortAudio in this session. Reset on deinitialize so that a
+    // re-enumeration after a USB hot-plug registers every device from scratch
+    // instead of skipping them all.
+    bool m_oboeRegistered = false;
+#endif
 
     UserSettingsPointer m_pConfig;
     SoundManager* m_pSoundManager;
