@@ -1,0 +1,20 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "instructions": ["AGENTS.md"],
+  "permission": {
+    "bash": {
+      "*": "allow",
+      "git commit*": "ask",
+      "git push*": "ask",
+      "gh pr*": "deny",
+      "gh issue*": "deny",
+      "rm -rf *": "ask",
+      "adb install*": "ask",
+      "./configure_android.sh": "ask",
+      "./build_android.sh": "ask"
+    },
+    "external_directory": {
+      "*": "allow"
+    }
+  }
+}

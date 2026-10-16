@@ -483,6 +483,59 @@ void CoreServices::initializeLogging() {
             logFlags);
 }
 
+#if defined(Q_OS_ANDROID)
+namespace {
+
+// Shared storage folders where Android users commonly keep their music.
+// QStandardPaths::writableLocation(MusicLocation) returns an empty string on
+// Android 11+ because public directories are not directly reachable in scoped
+// storage, so the standard location cannot be used to seed the library.
+const QStringList kAndroidMusicDirCandidates = {
+        QStringLiteral("/storage/emulated/0/Music"),
+        QStringLiteral("/storage/emulated/0/DCIM/Music"),
+        QStringLiteral("/storage/emulated/0/Download"),
+        QStringLiteral("/storage/emulated/0/Podcasts"),
+        QStringLiteral("/storage/emulated/0/Movies"),
+};
+
+QStringList androidMusicDirsToSeed(const UserSettingsPointer& pConfig) {
+    // Seed exactly once, so that removing every directory by hand is not
+    // silently undone on the next start.
+    if (pConfig->getValue(mixxx::library::prefs::kAndroidDirsSeededConfigKey, false)) {
+        return {};
+    }
+    // StorageBridge.requestAccess() posts its dialog to the main looper, so the
+    // permission is still missing when this returns. Seeding right now would
+    // fail with InvalidOrMissingDirectory and never be retried, so ask now and
+    // let the next start do the seeding.
+    const QJniObject context = QNativeInterface::QAndroidApplication::context();
+    if (!QJniObject::callStaticMethod<jboolean>("org/mixxx/StorageBridge",
+                "hasAccess",
+                "(Landroid/content/Context;)Z",
+                context)) {
+        QJniObject::callStaticMethod<void>("org/mixxx/StorageBridge",
+                "requestAccess",
+                "(Landroid/content/Context;)V",
+                context);
+        return {};
+    }
+    QStringList result;
+    for (const QString& path : kAndroidMusicDirCandidates) {
+        // Only add folders that already exist, otherwise the scanner would
+        // keep retrying a path that was never there.
+        if (QDir(path).exists()) {
+            result.append(path);
+        }
+    }
+    if (!result.isEmpty()) {
+        pConfig->setValue(mixxx::library::prefs::kAndroidDirsSeededConfigKey, true);
+    }
+    return result;
+}
+
+} // namespace
+#endif // Q_OS_ANDROID
+
 void CoreServices::initialize(QApplication* pApp) {
     VERIFY_OR_DEBUG_ASSERT(!m_isInitialized) {
         return;
@@ -644,6 +697,7 @@ void CoreServices::initialize(QApplication* pApp) {
     bool musicDirAdded = false;
 
     if (m_pTrackCollectionManager->internalCollection()->loadRootDirs().isEmpty()) {
+        QStringList musicDirs;
 #if defined(Q_OS_IOS) || defined(Q_OS_WASM)
         // On the web and iOS, we are running in a sandbox (a virtual file
         // system on the web). Since we are generally limited to paths within
@@ -654,20 +708,14 @@ void CoreServices::initialize(QApplication* pApp) {
         // Advanced users can still customize this directory in the settings.
         QString fd = QStandardPaths::writableLocation(QStandardPaths::MusicLocation);
         QDir dir = fd;
-        if (!dir.exists()) {
+        if (!fd.isEmpty() && !dir.exists()) {
             dir.mkpath(".");
+        }
+        if (!fd.isEmpty()) {
+            musicDirs = QStringList{fd};
         }
 #elif defined(Q_OS_ANDROID)
-        QString fd;
-        QJniObject::callStaticMethod<void>("org/mixxx/StorageBridge",
-                "requestAccess",
-                "(Landroid/content/Context;)V",
-                QNativeInterface::QAndroidApplication::context());
-        fd = "/storage/emulated/0/Music/";
-        QDir dir = fd;
-        if (!dir.exists()) {
-            dir.mkpath(".");
-        }
+        musicDirs = androidMusicDirsToSeed(pConfig);
 #else
         // TODO(XXX) this needs to be smarter, we can't distinguish between an empty
         // path return value (not sure if this is normally possible, but it is
@@ -681,10 +729,15 @@ void CoreServices::initialize(QApplication* pApp) {
                 QStandardPaths::writableLocation(
                         QStandardPaths::MusicLocation),
                 QFileDialog::ShowDirsOnly);
+        if (!fd.isEmpty()) {
+            musicDirs = QStringList{fd};
+        }
 #endif
         // request to add directory to database.
-        if (!fd.isEmpty() && m_pLibrary->requestAddDir(fd)) {
-            musicDirAdded = true;
+        for (const QString& dir : musicDirs) {
+            if (m_pLibrary->requestAddDir(dir)) {
+                musicDirAdded = true;
+            }
         }
     }
 

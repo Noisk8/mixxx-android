@@ -16,6 +16,8 @@ extern const ConfigKey kRescanOnStartupConfigKey;
 
 extern const ConfigKey kRepairDatabaseOnNextRestartConfigKey;
 
+extern const ConfigKey kAndroidDirsSeededConfigKey;
+
 extern const ConfigKey kShowScanSummaryConfigKey;
 
 extern const ConfigKey kKeyNotationConfigKey;

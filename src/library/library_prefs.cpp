@@ -23,6 +23,11 @@ const ConfigKey mixxx::library::prefs::kRepairDatabaseOnNextRestartConfigKey =
                 QStringLiteral("[TrackCollection]"),
                 QStringLiteral("RepairDatabaseOnNextRestart")};
 
+const ConfigKey mixxx::library::prefs::kAndroidDirsSeededConfigKey =
+        ConfigKey{
+                mixxx::library::prefs::kConfigGroup,
+                QStringLiteral("AndroidDirsSeeded")};
+
 const ConfigKey mixxx::library::prefs::kShowScanSummaryConfigKey =
         ConfigKey{
                 mixxx::library::prefs::kConfigGroup,
