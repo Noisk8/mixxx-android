@@ -76,6 +76,14 @@ DlgPreferences::DlgPreferences(
 #endif
     fixSliderStyle();
     contentsTreeWidget->setHeaderHidden(true);
+#ifdef Q_OS_ANDROID
+    horizontalLayout->setContentsMargins(4, 4, 4, 4);
+    splitter->setHandleWidth(6);
+    if (const QScreen* pScreen = mixxx::widgethelper::getScreenForWidgetOrApplication(*this)) {
+        contentsTreeWidget->setMaximumWidth(
+                std::max(100, pScreen->availableGeometry().width() / 4));
+    }
+#endif
 
     // Add '&' to default button labels to always have Alt shortcuts, indpependent
     // of operating system.
