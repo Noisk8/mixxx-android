@@ -8,6 +8,51 @@ de código abierto — para **Android** (arm64-v8a, minSdk 28).
 Este repositorio contiene un snapshot del código fuente de Mixxx con los cambios
 necesarios para compilarlo como APK de Android y probarlo en teléfonos y tablets.
 
+## Para usuarios finales (usar la app)
+
+> Si solo quieres **usar Mixxx en Android**, seguí esta sección.  
+> Si quieres **compilar o modificar** la app, salta a la sección de desarrolladores.
+
+### 1) Descargar la app
+
+- Ve a **Releases** de este repositorio: <https://github.com/Noisk8/mixxx-android/releases>
+- Descarga el APK más reciente (`Mixxx-Android-arm64.apk`).
+- Requiere un dispositivo **Android 9 o superior con arquitectura arm64**.
+
+### 2) Instalar en el teléfono/tablet
+
+- Descarga el APK en tu **móvil/tablet** y ábrelo para instalarlo como cualquier app.
+- Si Android lo pide, habilita **«Instalar apps desconocidas»** para el navegador o gestor de archivos usado.
+
+### 3) Primer arranque y permisos
+
+- Al abrir Mixxx por primera vez, concede el permiso **«Acceso a todos los archivos»**
+  cuando se solicite. Sin ese permiso Mixxx no puede leer tu música.
+- Revisa también los permisos de MIDI/USB si vas a usar una controladora.
+
+### 4) Conectar la controladora (DJ controller)
+
+- **Recomendado:** conecta la controladora por USB **antes** de abrir Mixxx.
+- También puede usarse **Bluetooth MIDI** si tu controladora lo soporta.
+- Otorga el permiso USB/MIDI cuando Android lo solicite.
+
+### 5) Configurar la biblioteca de música
+
+1. Abre Mixxx.
+2. Entra a **Preferencias/Ajustes** (botón de engranaje).
+   - Mantén presionado el engranaje para abrir la interfaz QML nueva (si prefieres).
+3. Agrega las carpetas de música (agregar/quitar/re-enlazar carpetas disponibles en los ajustes).
+4. Espera a que Mixxx escanee/importe las canciones.
+
+### 6) Usar la app
+
+- Carga canciones en las decks.
+- Usa controles en pantalla o tu controladora para play/cue/EQ/filtros.
+- Si tu controladora no responde, revisa el mapeo del controlador y la conexión USB/BT.
+
+> Nota: este APK es una build **experimental**. Si algo no funciona, prueba reabrir la app
+> o revisar permisos/biblioteca/controladora.
+
 ## Cómo orientarte en este README
 
 - **Si eres usuario y solo quieres instalar/usar la app**, ve a:

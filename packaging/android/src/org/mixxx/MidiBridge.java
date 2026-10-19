@@ -18,6 +18,7 @@ import org.json.JSONObject;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -57,8 +58,8 @@ public final class MidiBridge {
     private static final class Connection {
         MidiDevice device;
         MidiInputPort inputPort;
-        MidiOutputPort outputPort;
-        MidiReceiver receiver;
+        final ArrayList<MidiOutputPort> outputPorts = new ArrayList<>();
+        final ArrayList<MidiReceiver> receivers = new ArrayList<>();
         final ConcurrentLinkedQueue<Message> queue = new ConcurrentLinkedQueue<>();
     }
 
@@ -160,26 +161,29 @@ public final class MidiBridge {
         Connection conn = new Connection();
         conn.device = device;
         boolean opened = false;
-        if (forOutput && info.getOutputPortCount() > 0) {
-            MidiOutputPort out = device.openOutputPort(0);
-            if (out != null) {
-                conn.outputPort = out;
-                conn.receiver = new MidiReceiver() {
-                    @Override
-                    public void onSend(byte[] data, int offset, int count, long timestamp) {
-                        if (count <= 0) {
-                            return;
+        if (forOutput) {
+            for (int port = 0; port < info.getOutputPortCount(); port++) {
+                MidiOutputPort out = device.openOutputPort(port);
+                if (out != null) {
+                    MidiReceiver receiver = new MidiReceiver() {
+                        @Override
+                        public void onSend(byte[] data, int offset, int count, long timestamp) {
+                            if (count <= 0) {
+                                return;
+                            }
+                            ConcurrentLinkedQueue<Message> queue = conn.queue;
+                            while (queue.size() >= MAX_QUEUED_MESSAGES) {
+                                queue.poll();
+                            }
+                            queue.add(new Message(
+                                    Arrays.copyOfRange(data, offset, offset + count), timestamp));
                         }
-                        ConcurrentLinkedQueue<Message> queue = conn.queue;
-                        while (queue.size() >= MAX_QUEUED_MESSAGES) {
-                            queue.poll();
-                        }
-                        queue.add(new Message(
-                                Arrays.copyOfRange(data, offset, offset + count), timestamp));
-                    }
-                };
-                out.connect(conn.receiver);
-                opened = true;
+                    };
+                    out.connect(receiver);
+                    conn.outputPorts.add(out);
+                    conn.receivers.add(receiver);
+                    opened = true;
+                }
             }
         }
         if (forInput && info.getInputPortCount() > 0) {
@@ -197,7 +201,7 @@ public final class MidiBridge {
         sConnections.put(deviceId, conn);
         Log.i(TAG, "opened device " + deviceId
                 + " inputPort=" + (conn.inputPort != null)
-                + " outputPort=" + (conn.outputPort != null));
+                + " outputPorts=" + conn.outputPorts.size());
         return true;
     }
 
@@ -269,9 +273,9 @@ public final class MidiBridge {
     }
 
     private static void closeConnection(Connection conn) {
-        if (conn.outputPort != null && conn.receiver != null) {
+        for (int i = 0; i < conn.outputPorts.size(); i++) {
             try {
-                conn.outputPort.disconnect(conn.receiver);
+                conn.outputPorts.get(i).disconnect(conn.receivers.get(i));
             } catch (Exception e) {
                 Log.w(TAG, "disconnect failed: " + e);
             }
@@ -283,9 +287,9 @@ public final class MidiBridge {
                 Log.w(TAG, "closing input port failed: " + e);
             }
         }
-        if (conn.outputPort != null) {
+        for (MidiOutputPort outputPort : conn.outputPorts) {
             try {
-                conn.outputPort.close();
+                outputPort.close();
             } catch (IOException e) {
                 Log.w(TAG, "closing output port failed: " + e);
             }

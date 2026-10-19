@@ -1,0 +1,24 @@
+{
+  "version_code": 12,
+  "apk_sha256": "",
+  "tester": "",
+  "device": "",
+  "controller": "DDJ-400",
+  "tested_at": "",
+  "evidence": "",
+  "duration_seconds": 0,
+  "usb_reconnect_cycles": 0,
+  "cases": {
+    "rca_cue": "pending",
+    "usb_reconnect": "pending",
+    "screen_off": "pending",
+    "background": "pending",
+    "calls": "pending",
+    "notifications": "pending",
+    "long_session": "pending",
+    "touch_preferences": "pending",
+    "touch_library": "pending",
+    "storage_permissions": "pending",
+    "update_preserves_data": "pending"
+  }
+}

@@ -2412,9 +2412,19 @@ if(QT6)
     )
     set_target_properties(mixxx PROPERTIES QT_ANDROID_ABIS "${ANDROID_ABI}")
     set_target_properties(mixxx PROPERTIES QT_ANDROID_PACKAGE_NAME "org.mixxx")
+    set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
+      "${CMAKE_SOURCE_DIR}/packaging/android/release.json")
+    file(READ "${CMAKE_SOURCE_DIR}/packaging/android/release.json" ANDROID_RELEASE_JSON)
+    string(JSON ANDROID_RELEASE_VERSION GET "${ANDROID_RELEASE_JSON}" version)
+    string(JSON ANDROID_RELEASE_CODE GET "${ANDROID_RELEASE_JSON}" version_code)
+    string(JSON ANDROID_RELEASE_CODENAME GET "${ANDROID_RELEASE_JSON}" codename)
+    string(JSON ANDROID_RELEASE_MIN_SDK GET "${ANDROID_RELEASE_JSON}" min_sdk)
     set_target_properties(
       mixxx
-      PROPERTIES QT_ANDROID_VERSION_NAME "${MIXXX_VERSION}"
+      PROPERTIES
+        QT_ANDROID_VERSION_NAME "${ANDROID_RELEASE_VERSION} (${ANDROID_RELEASE_CODENAME})"
+        QT_ANDROID_VERSION_CODE "${ANDROID_RELEASE_CODE}"
+        QT_ANDROID_MIN_SDK_VERSION "${ANDROID_RELEASE_MIN_SDK}"
     )
     set_target_properties(
       mixxx

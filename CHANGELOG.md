@@ -1,5 +1,53 @@
 # Changelog
 
+## Android v0.8.0 "Troy McClure" (2026-10-19)
+
+Codename: **Troy McClure** · `versionCode 12` · Base: Mixxx 2.7.0-alpha · `arm64-v8a` · `minSdk 28`
+
+> Previous release: [android-v0.7.1 "Comic-Book-Guy"](https://github.com/Noisk8/mixxx-android/releases/tag/android-v0.7.1)
+
+### MIDI Controllers
+
+* Support multi-port MIDI output: open **all** output ports on a MIDI device
+  instead of only port 0, enabling controllers with complex port
+  configurations (e.g. DDJ-400 on certain Android hosts).
+* Migrate `Connection.outputPort` / `Connection.receiver` to
+  `ArrayList<MidiOutputPort>` / `ArrayList<MidiReceiver>` in `MidiBridge.java`,
+  with per-port disconnect and close in `closeConnection()`.
+* Improve close-connection logging: show port count instead of boolean.
+
+### User Interface
+
+* **QML Settings popup — responsive layout for mobile screens:**
+  * Reduce horizontal/vertical padding from 20 px to 8 px on screens narrower
+    than 700 px or shorter than 600 px.
+  * Content item uses `root.topPadding` / `root.bottomPadding` dynamically
+    instead of hard-coded 40 px margins.
+  * Category sidebar width scales proportionally:
+    `Math.min(280, Math.max(130, root.width * 0.28))`.
+  * Left margin of category content reduced from 20 px to 6 px on narrow
+    screens.
+* **Qt Widgets preferences (classic dialog) — Android adaptations:**
+  * Reduce `contentsMargins` to 4 px on all sides.
+  * Set splitter handle width to 6 px for easier touch dragging.
+  * Limit `contentsTreeWidget` max width to ¼ of screen width (min 100 px).
+
+### Documentation
+
+* Add comprehensive end-user guide in `README.md`: download APK, install,
+  grant All Files permission, connect DJ controller (USB/Bluetooth), configure
+  music library, and basic usage instructions.
+
+### Build System & Developer Experience
+
+* `build_android.sh`: Ollama Memory Guard — detect available RAM, lower
+  Ollama priority (`renice`) or pause it when free memory < 2 GB, restore
+  after build. Ninja parallelism set to `--parallel 4` for 16 GB shared-RAM
+  machines.
+* `setup_dev_environment.sh`: one-command developer environment provisioning
+  for Ubuntu/Debian, Fedora/RHEL and Arch Linux (system packages, Android
+  SDK/NDK, `android_env.sh`, dev keystore, optional pre-commit).
+
 ## [2.7.0](https://github.com/mixxxdj/mixxx/milestone/47) (Unreleased)
 
 ## [2.6.0](https://github.com/mixxxdj/mixxx/milestone/44) (Unreleased)
