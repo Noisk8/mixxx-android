@@ -22,8 +22,8 @@ Popup {
         root.activeCategory?.activated();
     }
 
-    horizontalPadding: 20
-    verticalPadding: 20
+    horizontalPadding: width < 700 ? 8 : 20
+    verticalPadding: height < 600 ? 8 : 20
 
     background: Rectangle {
         anchors.fill: parent
@@ -33,8 +33,8 @@ Popup {
     }
     contentItem: Item {
         anchors.centerIn: parent
-        height: parent.height - 40
-        width: parent.width - 40
+        height: parent.height - root.topPadding - root.bottomPadding
+        width: parent.width - root.leftPadding - root.rightPadding
 
         RowLayout {
             anchors.fill: parent
@@ -42,7 +42,7 @@ Popup {
 
             Rectangle {
                 Layout.fillHeight: true
-                Layout.preferredWidth: 280
+                Layout.preferredWidth: Math.min(280, Math.max(130, root.width * 0.28))
                 border.color: Theme.darkGray3
                 border.width: 6
                 color: Theme.darkGray
@@ -248,7 +248,7 @@ Popup {
 
                     Layout.fillHeight: true
                     Layout.fillWidth: true
-                    Layout.leftMargin: 20
+                    Layout.leftMargin: root.width < 700 ? 6 : 20
 
                     Component.onCompleted: {
                         let activateBuilder = index => function () {

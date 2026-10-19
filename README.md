@@ -6,6 +6,64 @@ de código abierto — para **Android 15 o posterior** (arm64-v8a, minSdk 35).
 Este repositorio contiene un snapshot del código fuente de Mixxx con los cambios
 necesarios para compilarlo como APK de Android y probarlo en teléfonos y tablets.
 
+> Inicio del texto redactado autónomamente por un agente de IA.
+
+## Para usuarios finales (usar la app)
+
+> Si solo quieres **usar Mixxx en Android**, seguí esta sección.
+> Si quieres **compilar o modificar** la app, salta a la sección de desarrolladores.
+
+### 1) Descargar la app
+
+- Ve a **Releases** de este repositorio: <https://github.com/Noisk8/mixxx-android/releases>
+- Descarga el APK más reciente (`Mixxx-Android-v0.8.0-Troy-McClure.apk`).
+- Requiere un dispositivo **Android 15 o superior con arquitectura arm64**.
+
+### 2) Instalar en el teléfono/tablet
+
+- Descarga el APK en tu **móvil/tablet** y ábrelo para instalarlo como cualquier app.
+- Si Android lo pide, habilita **«Instalar apps desconocidas»** para el navegador o gestor de archivos usado.
+
+### 3) Primer arranque y permisos
+
+- Al abrir Mixxx por primera vez, concede el permiso **«Acceso a todos los archivos»**
+  cuando se solicite. Sin ese permiso Mixxx no puede leer tu música.
+- Revisa también los permisos de MIDI/USB si vas a usar una controladora.
+
+### 4) Conectar la controladora (DJ controller)
+
+- **Recomendado:** conecta la controladora por USB **antes** de abrir Mixxx.
+- También puede usarse **Bluetooth MIDI** si tu controladora lo soporta.
+- Otorga el permiso USB/MIDI cuando Android lo solicite.
+
+### 5) Configurar la biblioteca de música
+
+1. Abre Mixxx.
+2. Entra a **Preferencias/Ajustes** (botón de engranaje).
+   - Mantén presionado el engranaje para abrir la interfaz QML nueva (si prefieres).
+3. Agrega las carpetas de música (agregar/quitar/re-enlazar carpetas disponibles en los ajustes).
+4. Espera a que Mixxx escanee/importe las canciones.
+
+### 6) Usar la app
+
+- Carga canciones en las decks.
+- Usa controles en pantalla o tu controladora para play/cue/EQ/filtros.
+- Si tu controladora no responde, revisa el mapeo del controlador y la conexión USB/BT.
+
+> Nota: este APK es una build **experimental**. Si algo no funciona, prueba reabrir la app
+> o revisar permisos/biblioteca/controladora.
+
+> Fin del texto redactado autónomamente por un agente de IA.
+
+## Cómo orientarte en este README
+
+- **Si eres usuario y solo quieres instalar/usar la app**, ve a:
+  - «[Instalar la app en el teléfono (usuarios)](#instalar-la-app-en-el-teléfono-usuarios)»
+  - «[Notas](#notas)»
+- **Si eres desarrollador y quieres compilar o modificar la app**, ve a:
+  - «[Para desarrolladores (requisitos y compilación)](#para-desarrolladores-requisitos-y-compilación)»
+  - «[Compilar](#compilar)»
+
 ## Contenido
 
 Scripts de compilación:
@@ -26,7 +84,10 @@ Cambios experimentales respecto al código original de Mixxx:
 - Compilación con `-DPIPEWIRE=OFF` (imprescindible: PipeWire no existe en
   Android y rompe el enlace).
 
-## Requisitos
+## Para desarrolladores (requisitos y compilación)
+
+> **Usuarios finales:** esta sección (y la siguiente) es para quienes van a **compilar o modificar** Mixxx.
+> Si solo quieres **usar la app**, salta a «[Instalar la app en el teléfono (usuarios)](#instalar-la-app-en-el-teléfono-usuarios)» y a «[Notas](#notas)».
 
 - Linux (probado en **Ubuntu 24.04**), unos 25 GB de disco libre y 8 GB de RAM
 
@@ -78,6 +139,22 @@ en otra ruta, edita `android_env.sh` con tus rutas.
 > instala los paquetes de apt, acepta las licencias del SDK y descarga el
 > NDK.
 
+### Instalación automática de dependencias (recomendado)
+
+Se incluye `setup_dev_environment.sh` en la raíz del proyecto. Detecta Ubuntu/Debian,
+Fedora/RHEL y Arch Linux, instala los paquetes de sistema correspondientes,
+configura Android SDK/NDK, genera `android_env.sh`, crea un keystore de desarrollo
+y (si se puede) instala `pre-commit`.
+
+```bash
+chmod +x setup_dev_environment.sh
+./setup_dev_environment.sh
+```
+
+> El script pide `sudo` la primera vez y descarga Android SDK/NDK.
+> Si tu distribución no es compatible o no quieres usarlo, sigue los pasos
+> manuales de las secciones anteriores.
+
 ## Compilar
 
 ### 1. Variables de entorno
@@ -123,7 +200,7 @@ build-android/android-build/build/outputs/apk/release/android-build-release-sign
 > actualmente, `Mixxx-Android-v0.7.1-Comic-Book-Guy.apk`. El script verifica firma,
 > versión interna y Android mínimo, y genera un archivo de checksum SHA-256.
 
-## Instalar en el teléfono
+## Instalar la app en el teléfono (usuarios)
 
 ```bash
 adb install -r build-android/android-build/build/outputs/apk/release/android-build-release-signed.apk
