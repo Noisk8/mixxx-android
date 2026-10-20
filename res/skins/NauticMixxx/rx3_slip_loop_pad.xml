@@ -1,0 +1,9 @@
+<!DOCTYPE template>
+<Template>
+  <PushButton>
+    <ObjectName>RX3ModePad</ObjectName><Rx3SlipLoopPad>true</Rx3SlipLoopPad>
+    <Channel><Variable name="channel"/></Channel><Beats><Variable name="label"/></Beats>
+    <Size>0me,18f</Size><NumberStates>1</NumberStates>
+    <State><Number>0</Number><Text><Variable name="label"/></Text></State>
+  </PushButton>
+</Template>

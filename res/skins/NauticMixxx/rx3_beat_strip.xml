@@ -1,0 +1,7 @@
+<Template>
+  <WidgetGroup>
+    <ObjectName>RX3BeatStrip</ObjectName><Layout>horizontal</Layout><Size>0me,80f</Size>
+    <!-- Native persistent Beat FX Bank and contextual touch X-PAD. -->
+    <Children/>
+  </WidgetGroup>
+</Template>

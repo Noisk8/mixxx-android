@@ -2,8 +2,12 @@ pragma Singleton
 import QtQuick 2.12
 
 QtObject {
+    /* Autonomous AI Agent Disclaimer:
+       The following colors were autonomously adjusted by an AI Agent.
+       Enforce pure black background and pure white text for maximum contrast on mobile devices.
+    */
     property color accentColor: "#3a60be"
-    property color backgroundColor: "#1e1e20"
+    property color backgroundColor: "#000000"
     property color blue: "#01dcfc"
     property color bpmSliderBarColor: blue
     property color buttonActiveColor: white
@@ -12,20 +16,21 @@ QtObject {
     property color buttonNormalColor: midGray
     property color crossfaderBarColor: blue
     property color crossfaderOrientationColor: lightGray
-    property color darkGray: "#0f0f0f"
-    property color darkGray2: "#2e2e2e"
+    property color darkGray: "#000000"
+    property color darkGray2: "#181818"
     property color darkGray3: "#3F3F3F"
-    property color darkGray4: "#202020"
+    property color darkGray4: "#121212"
     property color deckActiveColor: white
-    property color deckBackgroundColor: darkGray
+    property color deckBackgroundColor: "#000000"
     property color deckBeatjumpBackgroundColor: midGray3
     property color deckBeatjumpLabelColor: darkGray3
     property color deckEmptyCoverArt: darkGray3
-    property color deckInfoBarBackgroundColor: '#0e0e0e'
+    property color deckInfoBarBackgroundColor: '#000000'
     property color deckLineColor: darkGray2
     property color deckLoopBackgroundColor: midGray3
     property color deckLoopLabelColor: darkGray3
-    property color deckTextColor: lightGray2
+    property color deckTextColor: "#ffffff"
+    /* Autonomous AI Agent Disclaimer: End of autonomous AI-generated text */
     property color effectColor: yellow
     property color effectUnitColor: red
     property color embeddedBackgroundColor: "#a0000000"
@@ -52,7 +57,7 @@ QtObject {
     property string imgSliderHandle: "images/slider_handle.svg"
     property string imgVolumeSliderBackground: "images/slider_volume.svg"
     property color knobBackgroundColor: "#262626"
-    property color libraryPanelSplitterBackground: "#1e1e1e"
+    property color libraryPanelSplitterBackground: "#000000"
     property color libraryPanelSplitterHandle: "#5f5f5f"
     property color libraryPanelSplitterHandleActive: "#7a7a7a"
     property color lightGray: "#747474"
@@ -67,8 +72,8 @@ QtObject {
     property color pflActiveButtonColor: blue
     property color red: "#ea2a4e"
     property color samplerColor: blue
-    property color sunkenBackgroundColor: "#0C0C0C"
-    property color textColor: lightGray2
+    property color sunkenBackgroundColor: "#000000"
+    property color textColor: "#ffffff"
     property int textFontPixelSize: 14
     property color toolbarActiveColor: white
     property color toolbarBackgroundColor: darkGray2
@@ -83,6 +88,6 @@ QtObject {
     property color waveformMarkerLoopColorDisabled: '#FFFFFF'
     property color waveformPostrollColor: midGray
     property color waveformPrerollColor: midGray
-    property color white: "#D9D9D9"
+    property color white: "#ffffff"
     property color yellow: "#fca001"
 }
