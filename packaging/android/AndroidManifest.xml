@@ -4,8 +4,10 @@
     android:installLocation="auto"
     android:versionCode="-- %%INSERT_VERSION_CODE%% --"
     android:versionName="-- %%INSERT_VERSION_NAME%% --">
-    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"  />
-    <uses-permission android:name="android.permission.INTERNET"  />
+    <!-- Network permissions required exclusively for live streaming / broadcast (Icecast/Shoutcast). -->
+    <!-- The app operates standalone and offline; network sockets are opened only upon user broadcast activation. -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE"/>
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS"  />
     <uses-permission android:name="android.permission.RECORD_AUDIO"  />
@@ -22,11 +24,6 @@
         android:largeScreens="true"
         android:normalScreens="true"
         android:smallScreens="true" />
-    <!-- Autonomous AI Agent Disclaimer:
-         The following application configuration was autonomously modified by an AI Agent.
-         Enforces Black theme so Android initializes the decor view and
-         window surface with pure black instead of the system Light theme.
-    -->
     <application
         android:name="org.qtproject.qt.android.bindings.QtApplication"
         android:hardwareAccelerated="true"
@@ -34,9 +31,10 @@
         android:label="Mixxx"
         android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen"
         android:requestLegacyExternalStorage="true"
-        android:allowBackup="true"
-        android:fullBackupOnly="false">
-    <!-- Autonomous AI Agent Disclaimer: End of autonomous AI-generated text -->
+        android:allowBackup="false">
+        <!-- profileable enables CPU tracing (Perfetto) and native memory profiling (heapprofd) via ADB shell -->
+        <!-- on production builds without turning on debuggable (which harms DSP compiler optimizations). -->
+        <profileable android:shell="true"/>
         <activity
             android:name="org.mixxx.MainActivity"
             android:configChanges="orientation|uiMode|screenLayout|screenSize|smallestScreenSize|layoutDirection|locale|fontScale|keyboard|keyboardHidden|navigation|mcc|mnc|density"

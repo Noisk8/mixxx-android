@@ -7,9 +7,24 @@ namespace mixxx {
 
 ScreensaverManager::ScreensaverManager(UserSettingsPointer pConfig, QObject* pParent)
         : QObject(pParent), m_pConfig(pConfig) {
+#if defined(Q_OS_ANDROID)
+    // On Android, migrate existing installations that inherited the desktop default 'On'
+    // so the screen is not kept awake permanently without user choice.
+    const bool migrated = pConfig->getValue(
+            ConfigKey("[Config]", "InhibitScreensaverAndroidMigrated"), false);
+    if (!migrated) {
+        pConfig->setValue(ConfigKey("[Config]", "InhibitScreensaver"),
+                mixxx::preferences::ScreenSaver::Off);
+        pConfig->setValue(
+                ConfigKey("[Config]", "InhibitScreensaverAndroidMigrated"), true);
+    }
+    const auto defaultMode = mixxx::preferences::ScreenSaver::Off;
+#else
+    const auto defaultMode = mixxx::preferences::ScreenSaver::On;
+#endif
     m_inhibitScreensaver =
             pConfig->getValue(ConfigKey("[Config]", "InhibitScreensaver"),
-                    mixxx::preferences::ScreenSaver::On);
+                    defaultMode);
     pConfig->setValue(ConfigKey("[Config]", "InhibitScreensaver"), m_inhibitScreensaver);
     if (m_inhibitScreensaver == mixxx::preferences::ScreenSaver::On) {
         mixxx::ScreenSaverHelper::inhibit();

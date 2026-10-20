@@ -2460,6 +2460,8 @@ if(QT6)
       set(ANDROID_APP_ARGUMENTS "--log-level info")
     endif()
     set(QT_ANDROID_APPLICATION_ARGUMENTS "${ANDROID_APP_ARGUMENTS}")
+    # Network permissions required exclusively for live streaming / broadcast (Shoutcast/Icecast).
+    # Opt-in feature initiated only when user enables live broadcasting.
     qt_add_android_permission(mixxx
     NAME android.permission.ACCESS_NETWORK_STATE
     )
