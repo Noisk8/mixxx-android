@@ -32,8 +32,10 @@ class AudioFocus : public QObject {
     void pauseAllPlayers();
     void abandonFocus();
     void logAudioLevels();
+    bool anyLiveInputActive() const;
 
     std::vector<std::unique_ptr<ControlProxy>> m_playControls;
+    std::vector<std::unique_ptr<ControlProxy>> m_liveInputControls;
     std::vector<std::unique_ptr<ControlProxy>> m_playerCountControls;
     std::unique_ptr<QTimer> m_pDiagnosticTimer;
     bool m_hasFocus = false;

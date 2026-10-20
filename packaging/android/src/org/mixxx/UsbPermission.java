@@ -14,7 +14,7 @@ public class UsbPermission {
         "org.mixxx.permissions.USB_PERMISSION";
     private static final String TAG = "MixxxUsbPermission";
     private static native void usbDeviceAccessResult(Object device, boolean granted);
-    private static native void usbDeviceChanged();
+    private static native void usbDeviceChanged(boolean attached);
 
     public boolean registerServiceBroadcastReceiver(Context context) {
         try {
@@ -56,11 +56,17 @@ public class UsbPermission {
                         Log.i(TAG, "Permission was granted");
                     }
                 }
-            } else if (UsbManager.ACTION_USB_DEVICE_ATTACHED.equals(action) ||
-                       UsbManager.ACTION_USB_DEVICE_DETACHED.equals(action)) {
-                Log.i(TAG, "USB device state changed: " + action);
+            } else if (UsbManager.ACTION_USB_DEVICE_ATTACHED.equals(action)) {
+                Log.i(TAG, "USB device attached: " + action);
                 try {
-                    usbDeviceChanged();
+                    usbDeviceChanged(true);
+                } catch (UnsatisfiedLinkError e) {
+                    Log.w(TAG, "usbDeviceChanged native method not found", e);
+                }
+            } else if (UsbManager.ACTION_USB_DEVICE_DETACHED.equals(action)) {
+                Log.i(TAG, "USB device detached: " + action);
+                try {
+                    usbDeviceChanged(false);
                 } catch (UnsatisfiedLinkError e) {
                     Log.w(TAG, "usbDeviceChanged native method not found", e);
                 }

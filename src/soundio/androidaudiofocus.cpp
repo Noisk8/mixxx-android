@@ -15,8 +15,10 @@
 #include "control/controlobject.h"
 #include "control/controlproxy.h"
 #include "controllers/controllermanager.h"
+#include "soundio/androidstatemachine.h"
 #include "soundio/androidusbremap.h"
 #include "soundio/soundmanager.h"
+#include "util/androidjni.h"
 #include "moc_androidaudiofocus.cpp"
 
 namespace {
@@ -27,6 +29,7 @@ constexpr int kFocusLossTransientCanDuck = -3;
 constexpr const char* kBridgeClass = "org/mixxx/AudioFocusBridge";
 
 mixxx::android::AudioFocus* s_pAudioFocus = nullptr;
+std::unique_ptr<mixxx::android::ControllerAudioStateMachine> s_pStateMachine;
 } // namespace
 
 namespace mixxx {
@@ -36,14 +39,17 @@ AudioFocus::AudioFocus(SoundManager* soundManager, ControllerManager* controller
         QObject* pParent, bool diagnostics)
         : QObject(pParent), m_soundManager(soundManager), m_controllerManager(controllerManager) {
     s_pAudioFocus = this;
+    if (!s_pStateMachine) {
+        s_pStateMachine = std::make_unique<ControllerAudioStateMachine>();
+    }
 
     const QJniObject context = QNativeInterface::QAndroidApplication::context();
     if (context.isValid()) {
-        QJniObject::callStaticMethod<void>(kBridgeClass,
+        SafeJni::callStaticVoidMethod(kBridgeClass,
                 "init",
                 "(Landroid/content/Context;)V",
                 context);
-        QJniObject::callStaticMethod<void>("org/mixxx/HardwareBridge", "init",
+        SafeJni::callStaticVoidMethod("org/mixxx/HardwareBridge", "init",
                 "(Landroid/content/Context;)V", context);
     }
 
@@ -91,6 +97,15 @@ AudioFocus::AudioFocus(SoundManager* soundManager, ControllerManager* controller
             remap(config.getInputsRef());
             const auto status = m_soundManager->setConfig(config);
             qInfo() << "Android USB audio recovery status:" << static_cast<int>(status);
+            if (s_pStateMachine) {
+                if (status == SoundDeviceStatus::Ok) {
+                    s_pStateMachine->transitionTo(DeviceLifecycleState::Streaming,
+                            QStringLiteral("Audio configured successfully"));
+                } else {
+                    s_pStateMachine->transitionTo(DeviceLifecycleState::Failed,
+                            QStringLiteral("Audio setConfig failed"));
+                }
+            }
         }
         if (changes & 2) {
             m_controllerManager->reconnectAndroidMidi();
@@ -117,7 +132,7 @@ AudioFocus::AudioFocus(SoundManager* soundManager, ControllerManager* controller
 }
 
 AudioFocus::~AudioFocus() {
-    QJniObject::callStaticMethod<void>("org/mixxx/HardwareBridge", "shutdown", "()V");
+    SafeJni::callStaticVoidMethod("org/mixxx/HardwareBridge", "shutdown", "()V");
     abandonFocus();
     s_pAudioFocus = nullptr;
 }
@@ -145,7 +160,38 @@ void AudioFocus::refreshPlayers() {
             m_playControls.push_back(std::move(pPlay));
         }
     }
+
+    // Monitor live inputs: microphones, auxiliaries, and vinyl control
+    const auto addLiveInput = [this](const ConfigKey& key) {
+        if (!ControlObject::exists(key)) {
+            return;
+        }
+        if (std::any_of(m_liveInputControls.cbegin(), m_liveInputControls.cend(),
+                [&key](const auto& pInput) { return pInput->getKey() == key; })) {
+            return;
+        }
+        auto pInput = std::make_unique<ControlProxy>(key, this);
+        pInput->connectValueChanged(this, &AudioFocus::updatePlayingState);
+        m_liveInputControls.push_back(std::move(pInput));
+    };
+
+    addLiveInput(ConfigKey(QStringLiteral("[Microphone]"), QStringLiteral("talkover")));
+    for (int i = 1; i <= 4; ++i) {
+        addLiveInput(ConfigKey(QStringLiteral("[Microphone%1]").arg(i), QStringLiteral("talkover")));
+        addLiveInput(ConfigKey(QStringLiteral("[Auxiliary%1]").arg(i), QStringLiteral("enabled")));
+        addLiveInput(ConfigKey(QStringLiteral("[Channel%1]").arg(i), QStringLiteral("vinylcontrol_enabled")));
+    }
+
     updatePlayingState();
+}
+
+bool AudioFocus::anyLiveInputActive() const {
+    for (const auto& pInput : m_liveInputControls) {
+        if (pInput->toBool()) {
+            return true;
+        }
+    }
+    return false;
 }
 
 void AudioFocus::updatePlayingState() {
@@ -159,23 +205,24 @@ void AudioFocus::updatePlayingState() {
             break;
         }
     }
+    const bool anyActive = anyPlaying || anyLiveInputActive();
 
-    if (anyPlaying && !m_hasFocus) {
-        const bool service = QJniObject::callStaticMethod<jboolean>("org/mixxx/PlaybackService", "setActive",
+    if (anyActive && !m_hasFocus) {
+        const bool service = SafeJni::callStaticMethod<jboolean>("org/mixxx/PlaybackService", "setActive",
                 "(Landroid/content/Context;Z)Z", QNativeInterface::QAndroidApplication::context().object(), true);
         if (!service) {
             pauseAllPlayers();
             abandonFocus();
             return;
         }
-        m_hasFocus = QJniObject::callStaticMethod<jboolean>(kBridgeClass, "request", "()Z");
+        m_hasFocus = SafeJni::callStaticMethod<jboolean>(kBridgeClass, "request", "()Z");
         m_focusRequested = m_hasFocus;
         if (!m_hasFocus) {
             qWarning() << "Android audio focus denied; pausing players";
             pauseAllPlayers();
             abandonFocus();
         }
-    } else if (!anyPlaying) {
+    } else if (!anyActive) {
         abandonFocus();
     }
 }
@@ -210,8 +257,8 @@ void AudioFocus::logAudioLevels() {
         return;
     }
 
-    QJniObject::callStaticMethod<void>(kBridgeClass, "logOutputState", "()V");
-    QJniObject::callStaticMethod<void>("org/mixxx/AudioTrackBridge", "logAll", "()V");
+    SafeJni::callStaticVoidMethod(kBridgeClass, "logOutputState", "()V");
+    SafeJni::callStaticVoidMethod("org/mixxx/AudioTrackBridge", "logAll", "()V");
     const auto mixerValue = [](const char* name) {
         const ConfigKey key(QStringLiteral("[Master]"), QString::fromLatin1(name));
         return ControlObject::exists(key)
@@ -244,7 +291,7 @@ void AudioFocus::logAudioLevels() {
         sample.insert(QString::fromLatin1(name), ControlObject::get(ConfigKey(QStringLiteral("[App]"), QString::fromLatin1(name))));
     }
     sample.insert(QStringLiteral("headMix"), ControlObject::get(ConfigKey(QStringLiteral("[Master]"), QStringLiteral("headMix"))));
-    QJniObject::callStaticMethod<void>("org/mixxx/SessionDiagnostics", "record", "(Ljava/lang/String;)V",
+    SafeJni::callStaticVoidMethod("org/mixxx/SessionDiagnostics", "record", "(Ljava/lang/String;)V",
             QJniObject::fromString(QString::fromUtf8(QJsonDocument(sample).toJson(QJsonDocument::Compact))));
     for (const auto& pPlay : m_playControls) {
         const auto group = pPlay->getKey().group;
@@ -274,10 +321,10 @@ void AudioFocus::pauseAllPlayers() {
 }
 
 void AudioFocus::abandonFocus() {
-    QJniObject::callStaticMethod<jboolean>("org/mixxx/PlaybackService", "setActive",
+    SafeJni::callStaticMethod<jboolean>("org/mixxx/PlaybackService", "setActive",
             "(Landroid/content/Context;Z)Z", QNativeInterface::QAndroidApplication::context().object(), false);
     if (m_focusRequested) {
-        QJniObject::callStaticMethod<void>(kBridgeClass, "abandon", "()V");
+        SafeJni::callStaticVoidMethod(kBridgeClass, "abandon", "()V");
     }
     m_focusRequested = false;
     m_hasFocus = false;
@@ -293,12 +340,28 @@ void AudioFocus::handleHardwareChange(int flags) {
             "Native hardware change queued flags=%d audioFocus=%d timer=%d",
             flags, s_pAudioFocus != nullptr, m_pHardwareTimer != nullptr);
     qInfo() << "Android hardware change received; flags=" << flags;
+    if (s_pStateMachine) {
+        if (flags & 4) {
+            s_pStateMachine->transitionTo(DeviceLifecycleState::Removed,
+                    QStringLiteral("Hardware device detached"));
+        } else if (flags & 8) {
+            s_pStateMachine->transitionTo(DeviceLifecycleState::Failed,
+                    QStringLiteral("Hardware transport failure"));
+        } else if (flags & 1) {
+            s_pStateMachine->transitionTo(DeviceLifecycleState::Opened,
+                    QStringLiteral("Hardware device attached"));
+        }
+    }
     if (flags & 4) {
         stopPlayback();
     }
     if (flags & 8) {
         if (++m_transportRetries > 3) {
             m_soundManager->closeActiveConfig();
+            if (s_pStateMachine) {
+                s_pStateMachine->transitionTo(DeviceLifecycleState::Failed,
+                        QStringLiteral("Audio recovery exceeded max retries"));
+            }
             qWarning() << "USB output recovery failed repeatedly; reconnect the controller or apply sound preferences";
             return;
         }
