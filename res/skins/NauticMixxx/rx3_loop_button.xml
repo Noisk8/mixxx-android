@@ -1,0 +1,25 @@
+<Template>
+  <PushButton>
+    <ObjectName>RX3LoopButton</ObjectName>
+    <Size>0me,38f</Size>
+    <NumberStates>2</NumberStates>
+    <LeftClickIsPushButton>true</LeftClickIsPushButton>
+    <State>
+      <Number>0</Number>
+      <Text><Variable name="label"/></Text>
+    </State>
+    <State>
+      <Number>1</Number>
+      <Text><Variable name="label"/></Text>
+    </State>
+    <Connection>
+      <ConfigKey>[Channel<Variable name="channel"/>],beatloop_<Variable name="size"/>_toggle</ConfigKey>
+      <EmitOnPressAndRelease>true</EmitOnPressAndRelease>
+      <ConnectValueToWidget>false</ConnectValueToWidget>
+    </Connection>
+    <Connection>
+      <ConfigKey>[Channel<Variable name="channel"/>],beatloop_<Variable name="size"/>_enabled</ConfigKey>
+      <ConnectValueFromWidget>false</ConnectValueFromWidget>
+    </Connection>
+  </PushButton>
+</Template>

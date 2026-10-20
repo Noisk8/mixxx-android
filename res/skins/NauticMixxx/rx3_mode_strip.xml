@@ -1,0 +1,60 @@
+<!DOCTYPE template>
+<Template>
+  <WidgetStack currentpage="[RX3SidePanel],current">
+    <ObjectName>RX3ModeStripStack</ObjectName>
+    <Size>0me,80f</Size>
+    <Children>
+      <WidgetGroup trigger="[RX3SidePanel],status">
+        <ObjectName>RX3StatusStrip</ObjectName>
+        <Layout>horizontal</Layout>
+        <Children>
+          <WidgetGroup>
+            <ObjectName>RX3StatusDeckWide</ObjectName>
+            <Layout>vertical</Layout>
+            <Children>
+              <WidgetStack currentpage="[RX3Display],gridpanel1"><ObjectName>RX3PerformanceToolsStack</ObjectName><Children><WidgetGroup><Layout>vertical</Layout><Children><WidgetStack currentpage="[RX3PadModeDeck1],current">
+                <ObjectName>RX3PadModeStack</ObjectName>
+                <Children>
+                  <WidgetGroup trigger="[RX3PadModeDeck1],mode1"><Layout>horizontal</Layout><Children><Template src="skin:rx3_hotcue_mode_page.xml"><SetVariable name="channel">1</SetVariable><SetVariable name="title">HOT CUE</SetVariable><SetVariable name="gate">false</SetVariable></Template></Children></WidgetGroup>
+                  <WidgetGroup trigger="[RX3PadModeDeck1],mode2"><Layout>horizontal</Layout><Children><Template src="skin:rx3_loop_page.xml"><SetVariable name="channel">1</SetVariable><SetVariable name="title">BEAT LOOP</SetVariable><SetVariable name="p1">1/4</SetVariable><SetVariable name="p2">1/2</SetVariable><SetVariable name="p3">1</SetVariable><SetVariable name="p4">2</SetVariable><SetVariable name="p5">4</SetVariable><SetVariable name="p6">8</SetVariable><SetVariable name="p7">16</SetVariable><SetVariable name="p8">32</SetVariable></Template></Children></WidgetGroup>
+                  <WidgetGroup trigger="[RX3PadModeDeck1],mode3"><Layout>horizontal</Layout><Children><Template src="skin:rx3_slip_loop_page.xml"><SetVariable name="channel">1</SetVariable><SetVariable name="title">SLIP LOOP</SetVariable><SetVariable name="p1">1/16</SetVariable><SetVariable name="p2">1/8</SetVariable><SetVariable name="p3">1/4</SetVariable><SetVariable name="p4">1/2</SetVariable><SetVariable name="p5">1</SetVariable><SetVariable name="p6">2</SetVariable><SetVariable name="p7">1/3</SetVariable><SetVariable name="p8">3/4</SetVariable></Template></Children></WidgetGroup>
+                  <WidgetGroup trigger="[RX3PadModeDeck1],mode4"><Layout>horizontal</Layout><Children><Template src="skin:rx3_jump_page.xml"><SetVariable name="channel">1</SetVariable><SetVariable name="title">BEAT JUMP</SetVariable><SetVariable name="p1">1</SetVariable><SetVariable name="p2">1</SetVariable><SetVariable name="p3">2</SetVariable><SetVariable name="p4">2</SetVariable><SetVariable name="p5">4</SetVariable><SetVariable name="p6">4</SetVariable><SetVariable name="p7">8</SetVariable><SetVariable name="p8">8</SetVariable></Template></Children></WidgetGroup>
+                  <WidgetGroup trigger="[RX3PadModeDeck1],mode5"><Layout>horizontal</Layout><Children><Template src="skin:rx3_hotcue_mode_page.xml"><SetVariable name="channel">1</SetVariable><SetVariable name="title">GATE CUE</SetVariable><SetVariable name="gate">true</SetVariable></Template></Children></WidgetGroup>
+                  <WidgetGroup trigger="[RX3PadModeDeck1],mode6"><Layout>horizontal</Layout><Children><Template src="skin:rx3_loop_page.xml"><SetVariable name="channel">1</SetVariable><SetVariable name="title">BEAT LOOP 2</SetVariable><SetVariable name="p1">3/4</SetVariable><SetVariable name="p2">1</SetVariable><SetVariable name="p3">3/2</SetVariable><SetVariable name="p4">3</SetVariable><SetVariable name="p5">5</SetVariable><SetVariable name="p6">6</SetVariable><SetVariable name="p7">7</SetVariable><SetVariable name="p8">9</SetVariable></Template></Children></WidgetGroup>
+                  <WidgetGroup trigger="[RX3PadModeDeck1],mode7"><Layout>horizontal</Layout><Children><Template src="skin:rx3_release_page.xml"><SetVariable name="channel">1</SetVariable><SetVariable name="title">RELEASE FX</SetVariable><SetVariable name="p1">V.BRAKE S</SetVariable><SetVariable name="p2">B.SPIN S</SetVariable><SetVariable name="p3">ECHO OUT</SetVariable><SetVariable name="p4">MUTE</SetVariable><SetVariable name="p5">V.BRAKE L</SetVariable><SetVariable name="p6">B.SPIN L</SetVariable><SetVariable name="p7">BUILD UP</SetVariable><SetVariable name="p8">DUCKING</SetVariable></Template></Children></WidgetGroup>
+                  <WidgetGroup trigger="[RX3PadModeDeck1],mode8"><Layout>horizontal</Layout><Children><Template src="skin:rx3_jump_page.xml"><SetVariable name="channel">1</SetVariable><SetVariable name="title">BEAT JUMP 2</SetVariable><SetVariable name="p1">0.5</SetVariable><SetVariable name="p2">0.5</SetVariable><SetVariable name="p3">2</SetVariable><SetVariable name="p4">2</SetVariable><SetVariable name="p5">4</SetVariable><SetVariable name="p6">4</SetVariable><SetVariable name="p7">16</SetVariable><SetVariable name="p8">16</SetVariable></Template></Children></WidgetGroup>
+                </Children>
+              </WidgetStack></Children></WidgetGroup><WidgetGroup><Layout>vertical</Layout><Children><Template src="skin:rx3_grid_tools.xml"><SetVariable name="channel">1</SetVariable></Template></Children></WidgetGroup></Children></WidgetStack>
+            </Children>
+          </WidgetGroup>
+
+          <WidgetGroup>
+            <ObjectName>RX3StatusDeckWide</ObjectName>
+            <Layout>vertical</Layout>
+            <Children>
+              <WidgetStack currentpage="[RX3Display],gridpanel2"><ObjectName>RX3PerformanceToolsStack</ObjectName><Children><WidgetGroup><Layout>vertical</Layout><Children><WidgetStack currentpage="[RX3PadModeDeck2],current">
+                <ObjectName>RX3PadModeStack</ObjectName>
+                <Children>
+                  <WidgetGroup trigger="[RX3PadModeDeck2],mode1"><Layout>horizontal</Layout><Children><Template src="skin:rx3_hotcue_mode_page.xml"><SetVariable name="channel">2</SetVariable><SetVariable name="title">HOT CUE</SetVariable><SetVariable name="gate">false</SetVariable></Template></Children></WidgetGroup>
+                  <WidgetGroup trigger="[RX3PadModeDeck2],mode2"><Layout>horizontal</Layout><Children><Template src="skin:rx3_loop_page.xml"><SetVariable name="channel">2</SetVariable><SetVariable name="title">BEAT LOOP</SetVariable><SetVariable name="p1">1/4</SetVariable><SetVariable name="p2">1/2</SetVariable><SetVariable name="p3">1</SetVariable><SetVariable name="p4">2</SetVariable><SetVariable name="p5">4</SetVariable><SetVariable name="p6">8</SetVariable><SetVariable name="p7">16</SetVariable><SetVariable name="p8">32</SetVariable></Template></Children></WidgetGroup>
+                  <WidgetGroup trigger="[RX3PadModeDeck2],mode3"><Layout>horizontal</Layout><Children><Template src="skin:rx3_slip_loop_page.xml"><SetVariable name="channel">2</SetVariable><SetVariable name="title">SLIP LOOP</SetVariable><SetVariable name="p1">1/16</SetVariable><SetVariable name="p2">1/8</SetVariable><SetVariable name="p3">1/4</SetVariable><SetVariable name="p4">1/2</SetVariable><SetVariable name="p5">1</SetVariable><SetVariable name="p6">2</SetVariable><SetVariable name="p7">1/3</SetVariable><SetVariable name="p8">3/4</SetVariable></Template></Children></WidgetGroup>
+                  <WidgetGroup trigger="[RX3PadModeDeck2],mode4"><Layout>horizontal</Layout><Children><Template src="skin:rx3_jump_page.xml"><SetVariable name="channel">2</SetVariable><SetVariable name="title">BEAT JUMP</SetVariable><SetVariable name="p1">1</SetVariable><SetVariable name="p2">1</SetVariable><SetVariable name="p3">2</SetVariable><SetVariable name="p4">2</SetVariable><SetVariable name="p5">4</SetVariable><SetVariable name="p6">4</SetVariable><SetVariable name="p7">8</SetVariable><SetVariable name="p8">8</SetVariable></Template></Children></WidgetGroup>
+                  <WidgetGroup trigger="[RX3PadModeDeck2],mode5"><Layout>horizontal</Layout><Children><Template src="skin:rx3_hotcue_mode_page.xml"><SetVariable name="channel">2</SetVariable><SetVariable name="title">GATE CUE</SetVariable><SetVariable name="gate">true</SetVariable></Template></Children></WidgetGroup>
+                  <WidgetGroup trigger="[RX3PadModeDeck2],mode6"><Layout>horizontal</Layout><Children><Template src="skin:rx3_loop_page.xml"><SetVariable name="channel">2</SetVariable><SetVariable name="title">BEAT LOOP 2</SetVariable><SetVariable name="p1">3/4</SetVariable><SetVariable name="p2">1</SetVariable><SetVariable name="p3">3/2</SetVariable><SetVariable name="p4">3</SetVariable><SetVariable name="p5">5</SetVariable><SetVariable name="p6">6</SetVariable><SetVariable name="p7">7</SetVariable><SetVariable name="p8">9</SetVariable></Template></Children></WidgetGroup>
+                  <WidgetGroup trigger="[RX3PadModeDeck2],mode7"><Layout>horizontal</Layout><Children><Template src="skin:rx3_release_page.xml"><SetVariable name="channel">2</SetVariable><SetVariable name="title">RELEASE FX</SetVariable><SetVariable name="p1">V.BRAKE S</SetVariable><SetVariable name="p2">B.SPIN S</SetVariable><SetVariable name="p3">ECHO OUT</SetVariable><SetVariable name="p4">MUTE</SetVariable><SetVariable name="p5">V.BRAKE L</SetVariable><SetVariable name="p6">B.SPIN L</SetVariable><SetVariable name="p7">BUILD UP</SetVariable><SetVariable name="p8">DUCKING</SetVariable></Template></Children></WidgetGroup>
+                  <WidgetGroup trigger="[RX3PadModeDeck2],mode8"><Layout>horizontal</Layout><Children><Template src="skin:rx3_jump_page.xml"><SetVariable name="channel">2</SetVariable><SetVariable name="title">BEAT JUMP 2</SetVariable><SetVariable name="p1">0.5</SetVariable><SetVariable name="p2">0.5</SetVariable><SetVariable name="p3">2</SetVariable><SetVariable name="p4">2</SetVariable><SetVariable name="p5">4</SetVariable><SetVariable name="p6">4</SetVariable><SetVariable name="p7">16</SetVariable><SetVariable name="p8">16</SetVariable></Template></Children></WidgetGroup>
+                </Children>
+              </WidgetStack></Children></WidgetGroup><WidgetGroup><Layout>vertical</Layout><Children><Template src="skin:rx3_grid_tools.xml"><SetVariable name="channel">2</SetVariable></Template></Children></WidgetGroup></Children></WidgetStack>
+            </Children>
+          </WidgetGroup>
+        </Children>
+      </WidgetGroup>
+
+      <WidgetGroup trigger="[RX3SidePanel],beatfx">
+        <ObjectName>RX3ModeStripPage</ObjectName>
+        <Layout>horizontal</Layout>
+        <Children><Template src="skin:rx3_beat_strip.xml"/></Children>
+      </WidgetGroup>
+    </Children>
+  </WidgetStack>
+</Template>

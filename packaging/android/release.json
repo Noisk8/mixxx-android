@@ -2,5 +2,6 @@
   "version": "0.8.0",
   "version_code": 12,
   "codename": "Troy McClure",
-  "min_sdk": 35
+  "min_sdk": 29,
+  "target_sdk": 35
 }

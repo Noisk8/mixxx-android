@@ -1,0 +1,9 @@
+<!DOCTYPE template>
+<Template>
+  <PushButton>
+    <ObjectName>RX3ModePad</ObjectName>
+    <Size>0me,18f</Size>
+    <NumberStates>1</NumberStates>
+    <State><Number>0</Number><Text><Variable name="label"/></Text></State>
+  </PushButton>
+</Template>

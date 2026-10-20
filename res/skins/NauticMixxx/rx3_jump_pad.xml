@@ -1,0 +1,2 @@
+<!DOCTYPE template>
+<Template><PushButton><ObjectName>RX3JumpPad</ObjectName><Rx3JumpPad>true</Rx3JumpPad><Reverse><Variable name="reverse"/></Reverse><Size>0me,18f</Size><NumberStates>1</NumberStates><State><Number>0</Number><Text><Variable name="label"/></Text></State><Connection><ConfigKey>[Channel<Variable name="channel"/>],beatjump_<Variable name="label"/>_<Variable name="direction"/></ConfigKey><ConnectValueToWidget>false</ConnectValueToWidget></Connection></PushButton></Template>

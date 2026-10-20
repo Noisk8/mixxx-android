@@ -22,15 +22,21 @@
         android:largeScreens="true"
         android:normalScreens="true"
         android:smallScreens="true" />
+    <!-- Autonomous AI Agent Disclaimer:
+         The following application configuration was autonomously modified by an AI Agent.
+         Enforces Black theme so Android initializes the decor view and
+         window surface with pure black instead of the system Light theme.
+    -->
     <application
         android:name="org.qtproject.qt.android.bindings.QtApplication"
         android:hardwareAccelerated="true"
         android:icon="@mipmap/ic_launcher"
         android:label="Mixxx"
-        android:theme="@android:style/Theme.NoTitleBar.Fullscreen"
+        android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen"
         android:requestLegacyExternalStorage="true"
         android:allowBackup="true"
         android:fullBackupOnly="false">
+    <!-- Autonomous AI Agent Disclaimer: End of autonomous AI-generated text -->
         <activity
             android:name="org.mixxx.MainActivity"
             android:configChanges="orientation|uiMode|screenLayout|screenSize|smallestScreenSize|layoutDirection|locale|fontScale|keyboard|keyboardHidden|navigation|mcc|mnc|density"

@@ -1,0 +1,16 @@
+<Template>
+  <WidgetGroup>
+    <ObjectName>RX3LibraryPage</ObjectName><Layout>vertical</Layout><SizePolicy>me,e</SizePolicy>
+    <Children>
+      <Rx3Browser><ObjectName>RX3NativeBrowser</ObjectName><Size>0me,0me</Size><BgColor>#000000</BgColor><FgColor>#ffffff</FgColor></Rx3Browser>
+
+      <WidgetGroup>
+        <ObjectName>RX3LibraryDecks</ObjectName><Layout>horizontal</Layout><Size>0me,94f</Size>
+        <Children>
+          <Template src="skin:rx3_library_deck.xml"><SetVariable name="channel">1</SetVariable></Template>
+          <Template src="skin:rx3_library_deck.xml"><SetVariable name="channel">2</SetVariable></Template>
+        </Children>
+      </WidgetGroup>
+    </Children>
+  </WidgetGroup>
+</Template>

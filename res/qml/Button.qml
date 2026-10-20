@@ -11,8 +11,8 @@ AbstractButton {
     property color normalColor: Theme.buttonNormalColor
     property color pressedColor: activeColor
 
-    implicitHeight: 26
-    implicitWidth: 52
+    implicitHeight: 36
+    implicitWidth: 56
 
     background: Item {
         anchors.fill: parent

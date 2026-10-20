@@ -1,0 +1,108 @@
+<Template>
+  <WidgetGroup>
+    <ObjectName>Overview</ObjectName>
+    <Layout>vertical</Layout>
+    <Size>0me,0me</Size>
+    <Children>
+      <WidgetGroup>
+        <ObjectName>RX3PerformanceArea</ObjectName>
+        <Layout>horizontal</Layout>
+        <Size>0me,0me</Size>
+        <Children>
+          <WidgetGroup>
+            <ObjectName>Waveforms</ObjectName>
+            <Layout>stacked</Layout>
+            <Size>0me,0me</Size>
+            <Children>
+              <WidgetGroup>
+                <ObjectName>WaveformsContent</ObjectName>
+                <Layout>horizontal</Layout>
+                <Size>0me,0me</Size>
+                <Children>
+                  <WidgetGroup>
+                    <ObjectName>WaveformDeckInfo</ObjectName>
+                    <Layout>vertical</Layout>
+                    <Size>176f,0me</Size>
+                    <Children>
+                      <Template src="skin:waveform_info.xml"><SetVariable name="channel">1</SetVariable></Template>
+                      <Template src="skin:waveform_info.xml"><SetVariable name="channel">2</SetVariable></Template>
+                    </Children>
+                  </WidgetGroup>
+                  <!-- A single visible page keeps native OpenGL ancestors from
+                       obscuring the empty logo; deck cards remain independent. -->
+                  <WidgetGroup>
+                    <ObjectName>WaveformSignals</ObjectName>
+                    <Layout>stacked</Layout>
+                    <Size>0me,0me</Size>
+                    <Children>
+                      <WidgetGroup>
+                        <ObjectName>NauticBgLogoContainer</ObjectName>
+                        <Layout>vertical</Layout>
+                        <Size>0me,0me</Size>
+                        <Children>
+                          <Label>
+                            <ObjectName>NauticBgLogo</ObjectName>
+                            <Size>420f,140f</Size>
+                            <SizePolicy>f,f</SizePolicy>
+                          </Label>
+                        </Children>
+                      </WidgetGroup>
+                      <WidgetGroup>
+                        <ObjectName>WaveformSignalContent</ObjectName>
+                        <Layout>vertical</Layout>
+                        <Size>0me,0me</Size>
+                        <Children>
+                          <Template src="skin:waveform.xml"><SetVariable name="channel">1</SetVariable></Template>
+                          <Template src="skin:waveform.xml"><SetVariable name="channel">2</SetVariable></Template>
+                        </Children>
+                      </WidgetGroup>
+                    </Children>
+                  </WidgetGroup>
+                </Children>
+              </WidgetGroup>
+            </Children>
+          </WidgetGroup>
+          <!-- Two reference pixels keep both waveform lanes clear of the FX rail. -->
+          <WidgetGroup>
+            <ObjectName>RX3WaveformRightGap</ObjectName>
+            <Size>2f,0me</Size>
+          </WidgetGroup>
+          <WidgetGroup>
+            <ObjectName>SidePanel_Container</ObjectName>
+            <Layout>vertical</Layout>
+            <Size>184f,0me</Size>
+            <Children>
+              <Template src="skin:beffect.xml"/>
+            </Children>
+          </WidgetGroup>
+        </Children>
+      </WidgetGroup>
+
+      <!-- Ten reference pixels separate the beat-grid edge from either strip. -->
+      <WidgetGroup>
+        <ObjectName>RX3ModeStripContainer</ObjectName>
+        <Layout>vertical</Layout>
+        <Size>0me,90f</Size>
+        <Children><Template src="skin:rx3_mode_strip.xml"/></Children>
+      </WidgetGroup>
+
+      <WidgetGroup>
+        <ObjectName>Decks</ObjectName>
+        <Layout>horizontal</Layout>
+        <Size>0me,216f</Size>
+        <Children>
+          <Template src="skin:deck.xml">
+            <SetVariable name="channel">1</SetVariable>
+            <SetVariable name="ovh">64</SetVariable>
+            <SetVariable name="ovwf">60</SetVariable>
+          </Template>
+          <Template src="skin:deck.xml">
+            <SetVariable name="channel">2</SetVariable>
+            <SetVariable name="ovh">64</SetVariable>
+            <SetVariable name="ovwf">60</SetVariable>
+          </Template>
+        </Children>
+      </WidgetGroup>
+    </Children>
+  </WidgetGroup>
+</Template>

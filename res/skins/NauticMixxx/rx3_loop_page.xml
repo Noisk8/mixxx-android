@@ -1,0 +1,38 @@
+<!DOCTYPE template>
+<Template>
+  <WidgetGroup>
+    <ObjectName>RX3ModePage</ObjectName>
+    <Layout>vertical</Layout>
+    <Children>
+      <Label>
+        <ObjectName>RX3ModeTitle</ObjectName><Rx3ModeTitle>true</Rx3ModeTitle>
+        <Text><Variable name="title"/></Text>
+        <Size>0me,16f</Size>
+      </Label>
+      <WidgetGroup><ObjectName>RX3ModeTitleGap</ObjectName><Size>0me,8f</Size></WidgetGroup>
+      <WidgetGroup>
+        <ObjectName>RX3ModePadRow</ObjectName>
+        <Layout>horizontal</Layout>
+        <Size>0me,18f</Size>
+        <Children>
+          <Template src="skin:rx3_loop_pad.xml"><SetVariable name="label"><Variable name="p1"/></SetVariable></Template>
+          <Template src="skin:rx3_loop_pad.xml"><SetVariable name="label"><Variable name="p2"/></SetVariable></Template>
+          <Template src="skin:rx3_loop_pad.xml"><SetVariable name="label"><Variable name="p3"/></SetVariable></Template>
+          <Template src="skin:rx3_loop_pad.xml"><SetVariable name="label"><Variable name="p4"/></SetVariable></Template>
+        </Children>
+      </WidgetGroup>
+      <WidgetGroup><ObjectName>RX3ModeRowGap</ObjectName><Size>0me,10f</Size></WidgetGroup>
+      <WidgetGroup>
+        <ObjectName>RX3ModePadRow</ObjectName>
+        <Layout>horizontal</Layout>
+        <Size>0me,18f</Size>
+        <Children>
+          <Template src="skin:rx3_loop_pad.xml"><SetVariable name="label"><Variable name="p5"/></SetVariable></Template>
+          <Template src="skin:rx3_loop_pad.xml"><SetVariable name="label"><Variable name="p6"/></SetVariable></Template>
+          <Template src="skin:rx3_loop_pad.xml"><SetVariable name="label"><Variable name="p7"/></SetVariable></Template>
+          <Template src="skin:rx3_loop_pad.xml"><SetVariable name="label"><Variable name="p8"/></SetVariable></Template>
+        </Children>
+      </WidgetGroup>
+    </Children>
+  </WidgetGroup>
+</Template>

@@ -1,0 +1,73 @@
+<Template>
+  <WidgetGroup>
+    <ObjectName>Waveform_Channel<Variable name="channel"/></ObjectName><Rx3Deck><Variable name="channel"/></Rx3Deck>
+    <Connection>
+      <ConfigKey>[Pioneered],show_wf<Variable name="channel"/></ConfigKey>
+      <BindProperty>visible</BindProperty>
+    </Connection>
+    <Layout>horizontal</Layout>
+    <Size>0me,50me</Size>
+    <Children>
+      <!-- Keep the waveform viewport in the horizontal layout even while its
+           OpenGL surface is hidden, so the deck info rail stays on the left. -->
+      <WidgetGroup>
+        <ObjectName>WaveformViewport<Variable name="channel"/></ObjectName>
+        <Layout>stacked</Layout>
+        <Size>0me,0me</Size>
+        <Children>
+          <WidgetGroup>
+            <ObjectName>WaveformEmptySpace<Variable name="channel"/></ObjectName>
+            <Size>0me,0me</Size>
+          </WidgetGroup>
+          <Visual>
+        <TooltipId>waveform_display</TooltipId>
+        <ObjectName>Waveform<Variable name="channel"/></ObjectName>
+        <Channel><Variable name="channel"/></Channel>
+        <Connection>
+          <ConfigKey>[Channel<Variable name="channel"/>],track_loaded</ConfigKey>
+          <BindProperty>visible</BindProperty>
+        </Connection>
+        <Rx3SharedWheelZoom>true</Rx3SharedWheelZoom><DisableSeek>true</DisableSeek><ShowPreroll>false</ShowPreroll><ShowUntilNextMark>false</ShowUntilNextMark>
+        <BgColor>#000</BgColor>
+        <!-- RX3 beat grid: white edge ticks and slightly longer red downbeats.
+             All ticks begin at the first audible part of the track. -->
+        <BeatColor>#D0D0D0</BeatColor>
+        <DownbeatColor>#ff0000</DownbeatColor>
+        <BeatTickLength>10</BeatTickLength>
+        <PlayPosColor>#ffffff</PlayPosColor><PlayPosStoppedColor>#ff0000</PlayPosStoppedColor><PlayPosWidth>2</PlayPosWidth>
+        <!-- rekordbox draws no centre line. Mixxx's filtered renderer paints one
+             last, over the bands, and with AxesColor unset it defaults to
+             #f5f5f5: invisible inside a cream core, a white seam across every
+             quiet passage. Alpha zero removes it. Measured, the centre row goes
+             from #f5f5f5 to the band colour underneath at both a sparse and a
+             dense position. That works because blending is enabled by the time
+             this renderer draws, which WaveformRendererFiltered does not set
+             itself, so check it again after a Mixxx upgrade. -->
+        <AxesColor>#00000000</AxesColor>
+        <SignalColor>#1d6fe0</SignalColor>
+        <!-- Stock Mixxx filtered and RGB renderers use these two color triples. -->
+        <SignalLowColor>#0055e1</SignalLowColor>
+        <SignalMidColor>#b4690a</SignalMidColor>
+        <SignalHighColor>#f5ebd7</SignalHighColor>
+        <SignalRGBLowColor>#ff3030</SignalRGBLowColor>
+        <SignalRGBMidColor>#32d060</SignalRGBMidColor>
+        <SignalRGBHighColor>#357bff</SignalRGBHighColor>
+        <DefaultMark><Rx3Hotcue>true</Rx3Hotcue><Color>#ff8800</Color><TextColor>#000000</TextColor><Align>top</Align></DefaultMark>
+        <Mark><Control>cue_point</Control><Rx3Triangle>true</Rx3Triangle><Color>#ffffff</Color><TextColor>#ffffff</TextColor><Align>bottom</Align></Mark>
+        <Mark><Control>loop_start_position</Control><Rx3Triangle>true</Rx3Triangle><Color>#ffffff</Color><TextColor>#ffffff</TextColor><Align>bottom</Align></Mark>
+
+        <MarkRange>
+          <StartControl>loop_start_position</StartControl>
+          <EndControl>loop_end_position</EndControl>
+          <EnabledControl>loop_enabled</EnabledControl>
+          <Color>#ff8800</Color>
+          <Opacity>0.35</Opacity>
+          <DisabledColor>#acacac</DisabledColor>
+          <DisabledOpacity>0.4</DisabledOpacity>
+        </MarkRange>
+          </Visual>
+        </Children>
+      </WidgetGroup>
+    </Children>
+  </WidgetGroup>
+</Template>

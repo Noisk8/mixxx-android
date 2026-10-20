@@ -1,0 +1,205 @@
+<Template>
+  <TrackWidgetGroup>
+    <ObjectName>Deck</ObjectName><Rx3Deck><Variable name="channel"/></Rx3Deck><Connection><ConfigKey>[RX3Display],active<Variable name="channel"/></ConfigKey><BindProperty>highlight</BindProperty></Connection>
+    <Group>[Channel<Variable name="channel"/>]</Group>
+    <Layout>vertical</Layout>
+    <SizePolicy>i,me</SizePolicy>
+    <Children>
+      <!-- RX3 title rail: deck badge and track title span the full card. -->
+      <WidgetGroup>
+        <ObjectName>DeckHeader</ObjectName>
+        <Layout>horizontal</Layout>
+        <Size>0me,52f</Size>
+        <Children>
+          <Label><Rx3DeckBadge>true</Rx3DeckBadge>
+            <ObjectName>DeckNumBadge<Variable name="channel"/></ObjectName>
+            <Channel><Variable name="channel"/></Channel>
+            <Size>92f,52f</Size><SizePolicy>f,f</SizePolicy>
+          </Label>
+          <Label><ObjectName>DeckTitleNote</ObjectName><Text>&#9834;</Text></Label>
+          <TrackProperty>
+            <ObjectName>DeckTitle</ObjectName><Rx3DeckSelect><Variable name="channel"/></Rx3DeckSelect>
+            <TooltipId>track_title</TooltipId>
+            <SizePolicy>me,me</SizePolicy>
+            <Property>title</Property>
+            <Channel><Variable name="channel"/></Channel>
+            <Elide>right</Elide>
+          </TrackProperty>
+          <WidgetGroup>
+            <ObjectName>DeckOnAir</ObjectName>
+            <Layout>horizontal</Layout>
+            <SizePolicy>max,max</SizePolicy>
+            <Children><Label><ObjectName>DeckOnAirLabel</ObjectName><Text>ON AIR</Text></Label></Children>
+            <Connection>
+              <ConfigKey>[Pioneered],onair<Variable name="channel"/></ConfigKey>
+              <BindProperty>visible</BindProperty>
+            </Connection>
+          </WidgetGroup>
+        </Children>
+      </WidgetGroup>
+
+      <!-- The lower RX3 card has a narrow metadata rail. Everything to its
+           right is a readout row over one continuous overview waveform. -->
+      <WidgetGroup>
+        <ObjectName>DeckInfo</ObjectName>
+        <Layout>horizontal</Layout>
+        <Size>0me,0me</Size>
+        <Children>
+          <WidgetGroup>
+            <ObjectName>TrackNoCol</ObjectName>
+            <Layout>vertical</Layout>
+            <Size>92f,0me</Size>
+            <Children>
+              <Label><ObjectName>TrackNoCaption</ObjectName><Text>TRACK</Text></Label>
+              <TrackProperty>
+                <ObjectName>TrackNoValue</ObjectName>
+                <Property>trackNumber</Property>
+                <Channel><Variable name="channel"/></Channel>
+                <Elide>right</Elide>
+              </TrackProperty>
+              <Label><ObjectName>TrackNoPlayMode</ObjectName><Text>CONTINUE</Text></Label>
+              <Label>
+                <ObjectName>TrackNoQuantize</ObjectName><Text>QUANTIZE</Text>
+                <Connection><ConfigKey>[Channel<Variable name="channel"/>],quantize</ConfigKey><BindProperty>highlight</BindProperty></Connection>
+              </Label>
+              <Label><Rx3QuantizeValue>true</Rx3QuantizeValue><Channel><Variable name="channel"/></Channel><ObjectName>TrackNoQuantizeValue</ObjectName><Text>1</Text><Size>0me,30f</Size><Connection><ConfigKey>[Channel<Variable name="channel"/>],quantize</ConfigKey><BindProperty>highlight</BindProperty></Connection></Label>
+              <Label><ObjectName>TrackNoFill</ObjectName><Size>0me,0me</Size></Label>
+            </Children>
+          </WidgetGroup>
+
+          <WidgetGroup>
+            <ObjectName>DeckReadoutArea</ObjectName>
+            <Layout>vertical</Layout>
+            <Size>0me,0me</Size>
+            <Children>
+              <WidgetGroup>
+                <ObjectName>DeckReadoutRow</ObjectName>
+                <Layout>horizontal</Layout>
+                <Size>0me,78f</Size>
+                <Children>
+                  <WidgetGroup>
+                    <ObjectName>DeckCueCol</ObjectName>
+                    <Layout>vertical</Layout>
+                    <Size>88f,0me</Size>
+                    <Children>
+                      <Label><ObjectName>DeckCueLabel</ObjectName><Text>A.HOT CUE</Text><Connection><ConfigKey>[RX3Display],hotcueautoload</ConfigKey><BindProperty>visible</BindProperty></Connection></Label>
+                      <Label><ObjectName>DeckAutoCueLabel</ObjectName><Text>AUTO CUE</Text><Connection><ConfigKey>[Channel<Variable name="channel"/>],rx3_auto_cue</ConfigKey><BindProperty>visible</BindProperty></Connection></Label>
+                    </Children>
+                  </WidgetGroup>
+
+                  <WidgetGroup>
+                    <ObjectName>TrackTimeContainer</ObjectName>
+                    <Layout>vertical</Layout>
+                    <Size>0me,0me</Size>
+                    <Children>
+                      <WidgetGroup>
+                        <ObjectName>DeckTrackTimeTitle</ObjectName>
+                        <Layout>horizontal</Layout>
+                        <Size>0me,20f</Size>
+                        <Children>
+                          <Label><ObjectName>TimeLabelRemain</ObjectName><Text>REMAIN</Text><Connection><ConfigKey>[Channel<Variable name="channel"/>],rx3_time_remaining</ConfigKey><Transform><IsEqual>1</IsEqual></Transform><BindProperty>highlight</BindProperty></Connection></Label>
+                          <Label><ObjectName>TimeLabelSlash</ObjectName><Text>/</Text></Label>
+                          <Label><ObjectName>TimeLabelTime</ObjectName><Text>TIME</Text><Connection><ConfigKey>[Channel<Variable name="channel"/>],rx3_time_remaining</ConfigKey><Transform><IsEqual>0</IsEqual></Transform><BindProperty>highlight</BindProperty></Connection></Label>
+                        </Children>
+                      </WidgetGroup>
+                      <WidgetGroup>
+                        <ObjectName>DeckTrackTimeWrapper</ObjectName>
+                        <Layout>horizontal</Layout>
+                        <Size>0me,0me</Size>
+                        <Children>
+                          <NumberPos>
+                            <ObjectName>DeckTrackTime</ObjectName>
+                            <Rx3Format>deck</Rx3Format>
+                            <TooltipId>track_time</TooltipId>
+                            <NumberOfDigits>6</NumberOfDigits>
+                            <Channel><Variable name="channel"/></Channel>
+                            <Connection><ConfigKey>[Channel<Variable name="channel"/>],playposition</ConfigKey></Connection>
+                          </NumberPos>
+                        </Children>
+                      </WidgetGroup>
+                    </Children>
+                  </WidgetGroup>
+
+                  <WidgetGroup>
+                    <ObjectName>DeckTempoPanel</ObjectName>
+                    <Layout>vertical</Layout>
+                    <Size>100f,0me</Size>
+                    <Children>
+                      <WidgetGroup><ObjectName>DeckTempoRow</ObjectName><Layout>horizontal</Layout><Size>0me,20f</Size><Children>
+                        <Label><ObjectName>DeckTempoCaption</ObjectName><Text>TEMPO</Text></Label>
+                        <WidgetGroup><ObjectName>RateRangeBadge</ObjectName><Rx3RangeBadge>true</Rx3RangeBadge><Channel><Variable name="channel"/></Channel><Size>50f,20f</Size></WidgetGroup>
+                      </Children></WidgetGroup>
+                      <WidgetGroup><ObjectName>DeckTempoPercentRow</ObjectName><Layout>horizontal</Layout><Size>0me,0me</Size><Children>
+                        <NumberRate><ObjectName>DeckTempoPercent</ObjectName><TooltipId>rate_display</TooltipId><Channel><Variable name="channel"/></Channel><NumberOfDigits>2</NumberOfDigits></NumberRate>
+                        <Label><ObjectName>BPMPercent</ObjectName><Text>%</Text></Label>
+                      </Children></WidgetGroup>
+                    </Children>
+                  </WidgetGroup>
+
+                  <WidgetGroup>
+                    <ObjectName>DeckHeaderBpm</ObjectName>
+                    <Layout>vertical</Layout>
+                    <Size>98f,0me</Size>
+                    <Children>
+                      <WidgetGroup><ObjectName>DeckHeaderBpmTitleRow</ObjectName><Layout>horizontal</Layout><Size>0me,18f</Size><Children>
+                        <Label><ObjectName>DeckHeaderBpmTitle</ObjectName><Text>BPM</Text></Label>
+                        <Label><ObjectName>BpmMaster</ObjectName><Size>0me,0me</Size><SizePolicy>me,me</SizePolicy><Text>MASTER</Text><Connection><ConfigKey>[RX3Display],master<Variable name="channel"/></ConfigKey><BindProperty>highlight</BindProperty></Connection></Label>
+                      </Children></WidgetGroup>
+                      <WidgetGroup><ObjectName>RX3BpmValueSpace</ObjectName><Layout>vertical</Layout><Size>0me,0me</Size><SizePolicy>me,me</SizePolicy><Children><NumberBpm><Connection><ConfigKey>[Channel<Variable name="channel"/>],track_loaded</ConfigKey><BindProperty>visible</BindProperty></Connection>
+                        <ObjectName>DeckHeaderBpmValue</ObjectName>
+                        <Rx3Format>bpm</Rx3Format>
+                        <TooltipId>visual_bpm</TooltipId>
+                        <Channel><Variable name="channel"/></Channel>
+                        <NumberOfDigits>1</NumberOfDigits>
+                        <Connection><ConfigKey>[Channel<Variable name="channel"/>],visual_bpm</ConfigKey></Connection>
+                        <Connection><ConfigKey>[RX3Display],master<Variable name="channel"/></ConfigKey><BindProperty>highlight</BindProperty></Connection>
+                      </NumberBpm></Children></WidgetGroup>
+                    </Children>
+                    <Connection><ConfigKey>[RX3Display],master<Variable name="channel"/></ConfigKey><BindProperty>highlight</BindProperty></Connection>
+                  </WidgetGroup>
+                </Children>
+              </WidgetGroup>
+
+              <WidgetGroup>
+                <ObjectName>DeckOverviewContainer</ObjectName>
+                <Layout>vertical</Layout>
+                <Size>0me,<Variable name="ovh"/>f</Size>
+                <Children>
+                  <Overview><Rx3Overview>true</Rx3Overview><ShowCueTimes>false</ShowCueTimes><DefaultMark><Rx3Hotcue>true</Rx3Hotcue><Color>#ff8800</Color><TextColor>#000000</TextColor></DefaultMark>
+                    <ObjectName>DeckOverview</ObjectName>
+                    <Size>0me,<Variable name="ovwf"/>f</Size>
+                    <Channel><Variable name="channel"/></Channel>
+                    <BgColor>#000000</BgColor>
+                    <AxesColor>#00000000</AxesColor>
+                    <SignalColor>#1d6fe0</SignalColor>
+                    <SignalLowColor>#0055e1</SignalLowColor>
+                    <SignalMidColor>#b4690a</SignalMidColor>
+                    <SignalHighColor>#f5ebd7</SignalHighColor>
+                    <SignalRGBLowColor>#ff3030</SignalRGBLowColor>
+                    <SignalRGBMidColor>#32d060</SignalRGBMidColor>
+                    <SignalRGBHighColor>#357bff</SignalRGBHighColor>
+                    <PlayedOverlayColor>#99000000</PlayedOverlayColor>
+                    <PlayPosColor>#ffffff</PlayPosColor><PlayPosStoppedColor>#ff0000</PlayPosStoppedColor><PlayPosWidth>2</PlayPosWidth>
+                    <Mark><Control>cue_point</Control><Rx3Triangle>true</Rx3Triangle><Color>#ffffff</Color><TextColor>#ffffff</TextColor><Align>bottom</Align></Mark>
+
+
+
+
+
+
+
+
+                    <Mark><Control>loop_start_position</Control><Rx3Triangle>true</Rx3Triangle><Color>#ffffff</Color><TextColor>#ffffff</TextColor><Align>bottom</Align></Mark>
+
+                    <MarkRange><StartControl>loop_start_position</StartControl><EndControl>loop_end_position</EndControl><EnabledControl>loop_enabled</EnabledControl><Color>#6ee128</Color><Opacity>0.8</Opacity><DisabledColor>#acacac</DisabledColor><DisabledOpacity>0.08</DisabledOpacity></MarkRange>
+                    <Connection><ConfigKey>[Channel<Variable name="channel"/>],playposition</ConfigKey></Connection>
+                  </Overview>
+                </Children>
+              </WidgetGroup>
+            </Children>
+          </WidgetGroup>
+        </Children>
+      </WidgetGroup>
+    </Children>
+  </TrackWidgetGroup>
+</Template>
