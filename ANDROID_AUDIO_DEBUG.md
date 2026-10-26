@@ -132,6 +132,28 @@ la prueba física; no se ha cambiado el mapeo basándose únicamente en ella.
 
 ## Corrección preparada para Oboe multicanal
 
+> Actualización del 23-oct-2026, texto generado autónomamente por un agente de IA.
+> Una captura histórica nueva de `media.audio_policy` muestra la sesión Mixxx
+> 10625 en la salida USB 221 con máscara `0x8000000f`, PCM de 24 bits y 44100 Hz.
+> `MixxxAudioRoutes` registró `routedId=1358`, cuatro canales, máscara de índice
+> `0xf` y cero underruns. La DDJ-400 se desconectó antes de esta inspección, por
+> lo que no se pudo capturar una sesión activa ni escuchar físicamente CUE.
+> Estos datos descartan que esa sesión concreta estuviera en el mezclador estéreo,
+> pero no prueban que el canal PFL llegue al jack PHONES. Fin de actualización
+> generada autónomamente por un agente de IA.
+
+> Actualización de diagnóstico del 23-oct-2026, generada autónomamente por un
+> agente de IA. Con el deck B reproduciendo, fader en cero y PFL activo, se
+> midieron picos en el buffer de Mixxx antes de AudioTrack: Main 1–2 = 0,00000
+> y CUE 3–4 ≈ 0,96 durante más de 20 s. El usuario confirmó que B seguía
+> oyéndose por RCA. Se mantuvo desactivado el efecto Dolby durante toda la
+> sesión: AudioFlinger mostró `Enabled = n`, pero la fuga continuó. Intercambiar
+> los pares USB tampoco la eliminó. El perfil USB alternativo PCM de 16 bits
+> conservó cuatro canales y tampoco resolvió la fuga; se restauró PCM de 24 bits.
+> El fallo está después del buffer de Mixxx, en la ruta Android/HAL/controladora
+> o en la conexión física; la causa exacta aún no está aislada. Fin de la
+> actualización generada autónomamente por un agente de IA.
+
 La DDJ-400 anuncia canales `[2, 4]` y únicamente 44100 Hz. El historial de
 AudioFlinger sitúa la sesión Mixxx 17953, solicitada con cuatro canales a
 48000 Hz, en el mezclador AudioOut_1D, que tiene dos canales. Android cambió
@@ -140,9 +162,11 @@ del historial no muestran pistas de Mixxx ni escrituras. Esto apunta a una
 reducción a estéreo en la ruta de Android; aún requiere confirmar el resultado
 con otra prueba física y las ganancias corregidas.
 
-Se mantiene PortAudio/Oboe y se cambia solo la apertura de salidas de más de
-dos canales a `PerformanceMode::None` y `SharingMode::Shared`, para evitar la
-selección de la ruta rápida estéreo. Para una única tarjeta Oboe configurada
+El código actual registra las salidas USB de cuatro canales anunciadas por
+Android mediante `UsbSoundDevice` y `AudioTrackBridge`, con índice de canales
+`0xf` y PCM de 24 bits. La ruta Oboe que permanece para otras salidas usa
+`PerformanceMode::None` y `SharingMode::Shared` si pide más de dos canales.
+Para una única tarjeta Oboe configurada
 con salidas que alcanzan canales superiores a 2, si la configuración pide
 48000 Hz pero el dispositivo declara 44100 Hz como frecuencia predeterminada,
 SoundManager selecciona 44100 Hz antes de abrir los streams. Así el motor y
