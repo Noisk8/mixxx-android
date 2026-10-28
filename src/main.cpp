@@ -65,11 +65,7 @@ int runMixxx(MixxxApplication* pApp, const CmdlineArgs& args) {
     auto pCoreServices = std::make_shared<mixxx::CoreServices>(args, pApp);
 #ifdef MIXXX_USE_QML
     QString mainQmlFilePath;
-#if defined(Q_OS_ANDROID)
-    bool loadQml = true;
-#else
     bool loadQml = args.isQml();
-#endif
     if (!loadQml && args.getDeveloper()) {
         mixxx::skin::SkinLoader skinLoader(pCoreServices->getSettings());
         const mixxx::skin::SkinPointer pSkin = skinLoader.getConfiguredSkin();
