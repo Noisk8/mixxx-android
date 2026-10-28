@@ -481,7 +481,11 @@ void DlgPrefLibrary::slotAddDir() {
             this,
             tr("Choose a music directory"),
             QStandardPaths::writableLocation(QStandardPaths::MusicLocation),
-            QFileDialog::ShowDirsOnly);
+            QFileDialog::ShowDirsOnly
+#ifdef Q_OS_ANDROID
+                    | QFileDialog::DontUseNativeDialog
+#endif
+    );
     if (!fd.isEmpty()) {
         if (m_pLibrary->requestAddDir(fd)) {
             populateDirList();
