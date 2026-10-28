@@ -70,162 +70,175 @@ ComboBox {
         text: root.displayText
         verticalAlignment: Text.AlignVCenter
     }
+    readonly property real itemHeight: Math.max(38, root.contentItem.height + 16)
+
     delegate: ItemDelegate {
         id: itemDlgt
 
         required property int index
 
         highlighted: root.highlightedIndex === this.index
-        padding: 4
-        text: root.textAt(this.index)
-        verticalPadding: 8
-        width: root.width
+        implicitHeight: root.itemHeight
+        width: ListView.view ? ListView.view.width : root.popup.width
 
         background: Rectangle {
-            border.color: itemDlgt.highlighted ? Theme.deckLineColor : "transparent"
+            border.color: itemDlgt.highlighted ? "#00e5ff" : "transparent"
             border.width: 1
-            color: "transparent"
-            radius: 5
+            color: itemDlgt.down ? "#37474f" : (itemDlgt.highlighted ? "#263238" : "transparent")
+            radius: 4
         }
         contentItem: Text {
-            color: Theme.deckTextColor
+            color: itemDlgt.highlighted ? "#ffffff" : Theme.deckTextColor
             elide: Text.ElideRight
-            font: root.font
-            text: itemDlgt.text
+            font.pixelSize: Math.max(12, root.font.pixelSize)
+            font.bold: itemDlgt.highlighted
+            text: root.textAt(itemDlgt.index)
             verticalAlignment: Text.AlignVCenter
+            leftPadding: 10
+            rightPadding: 10
+        }
+
+        onClicked: {
+            root.currentIndex = itemDlgt.index;
+            root.activated(itemDlgt.index);
+            root.popup.close();
         }
     }
     popup: Popup {
         id: popupItem
 
-        height: root.contentItem.height * (Math.min(root.popupMaxItem, Math.max(root.count, 1)) + 1)
-        padding: 0
-        width: root.width
-        x: root.width - width
-        y: root.height - 4
+        modal: true
+        dim: false
+        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+        focus: true
 
-        background: Item {
+        width: root.width
+        height: Math.min(
+            root.itemHeight * Math.min(root.popupMaxItem, Math.max(root.count, 1)) + 16 + (root.footerItems.length > 0 ? root.itemHeight * root.footerItems.length : 0),
+            root.Window.window ? root.Window.window.height * 0.75 : 450
+        )
+        padding: 0
+
+        x: {
+            if (!root.Window.window) return (root.width - width) / 2;
+            const globalPos = root.mapToItem(null, 0, 0);
+            if (!globalPos) return (root.width - width) / 2;
+            if (globalPos.x + (root.width - width) / 2 < 8) {
+                return -globalPos.x + 8;
+            }
+            const winWidth = root.Window.window.width;
+            if (globalPos.x + (root.width + width) / 2 > winWidth - 8) {
+                return winWidth - 8 - globalPos.x - width;
+            }
+            return (root.width - width) / 2;
+        }
+
+        y: {
+            if (!root.Window.window) return root.height + 2;
+            const globalPos = root.mapToItem(null, 0, root.height);
+            if (!globalPos) return root.height + 2;
+            const winHeight = root.Window.window.height;
+            if (globalPos.y + height > winHeight - 10 && globalPos.y - height - root.height >= 10) {
+                return -height - 2;
+            }
+            return root.height + 2;
+        }
+
+        Overlay.modal: MouseArea {
+            anchors.fill: parent
+            preventStealing: true
+            onPressed: popupItem.close()
+        }
+
+        background: Rectangle {
+            color: "#181a20"
+            border.color: "#37474f"
+            border.width: 1
+            radius: 8
+
+            MouseArea {
+                anchors.fill: parent
+                preventStealing: true
+                onPressed: (mouse) => mouse.accepted = true
+            }
         }
         contentItem: Item {
-            Item {
-                id: content
+            id: content
 
+            anchors.fill: parent
+            anchors.margins: 4
+
+            ListView {
+                id: popupListView
                 anchors.fill: parent
+                clip: true
+                currentIndex: root.highlightedIndex
+                model: root.popup.visible ? root.delegateModel : null
+                interactive: true
+                boundsBehavior: Flickable.StopAtBounds
 
-                Shape {
-                    id: listIndicator
-
-                    anchors.right: parent.right
-                    anchors.rightMargin: 3
-                    anchors.top: parent.top
-                    antialiasing: true
-                    height: 20
-                    layer.enabled: true
-                    layer.samples: 4
-                    width: 20
-
-                    ShapePath {
-                        capStyle: ShapePath.RoundCap
-                        fillColor: Theme.embeddedBackgroundColor
-                        fillRule: ShapePath.WindingFill
-                        startX: listIndicator.width / 2
-                        startY: 0
-                        strokeColor: Theme.embeddedBackgroundColor
-                        strokeWidth: 2
-
-                        PathLine {
-                            x: listIndicator.width
-                            y: listIndicator.height
-                        }
-                        PathLine {
-                            x: 0
-                            y: listIndicator.height
-                        }
-                        PathLine {
-                            x: listIndicator.width / 2
-                            y: 0
-                        }
+                ScrollBar.vertical: ScrollBar {
+                    id: popupScrollBar
+                    policy: popupListView.contentHeight > popupListView.height ? ScrollBar.AlwaysOn : ScrollBar.AsNeeded
+                    width: 8
+                    contentItem: Rectangle {
+                        color: popupScrollBar.pressed ? "#00e5ff" : "#546e7a"
+                        radius: 4
                     }
                 }
-                Skin.EmbeddedBackground {
-                    anchors.bottom: parent.bottom
+
+                footer: Item {
                     anchors.left: parent.left
                     anchors.right: parent.right
-                    anchors.top: listIndicator.bottom
-                    clip: true
+                    height: childrenRect.height
 
-                    ListView {
-                        anchors.fill: parent
-                        bottomMargin: 0
-                        clip: true
-                        currentIndex: root.highlightedIndex
-                        leftMargin: 0
-                        model: root.popup.visible ? root.delegateModel : null
-                        rightMargin: 0
-                        topMargin: 0
+                    Repeater {
+                        model: root.footerItems
 
-                        ScrollIndicator.vertical: ScrollIndicator {
-                        }
-                        footer: Item {
+                        Rectangle {
+                            y: index * height
                             anchors.left: parent.left
                             anchors.right: parent.right
-                            height: childrenRect.height
+                            color: "transparent"
+                            height: root.itemHeight
 
-                            Repeater {
-                                model: root.footerItems
+                            Item {
+                                anchors.fill: parent
+                                anchors.margins: 6
 
-                                Rectangle {
-                                    y: index * height
-                                    anchors.left: parent.left
+                                Text {
+                                    anchors.bottom: parent.bottom
+                                    anchors.top: parent.top
+                                    color: Theme.deckTextColor
+                                    elide: Text.ElideRight
+                                    font: root.font
+                                    text: modelData.text
+                                    verticalAlignment: Text.AlignVCenter
+                                    leftPadding: 8
+                                }
+                                Text {
+                                    anchors.bottom: parent.bottom
                                     anchors.right: parent.right
-                                    color: "transparent"
-                                    height: root.contentItem.height
+                                    anchors.top: parent.top
+                                    color: Theme.deckTextColor
+                                    font.pixelSize: 16
+                                    text: modelData?.suffix || ''
+                                    rightPadding: 8
+                                }
+                            }
+                            MouseArea {
+                                anchors.fill: parent
+                                cursorShape: Qt.PointingHandCursor
+                                preventStealing: true
 
-                                    Item {
-                                        anchors.fill: parent
-                                        anchors.margins: 6
-
-                                        Text {
-                                            anchors.bottom: parent.bottom
-                                            anchors.top: parent.top
-                                            color: Theme.deckTextColor
-                                            elide: Text.ElideRight
-                                            font: root.font
-                                            text: modelData.text
-                                            verticalAlignment: Text.AlignVCenter
-                                        }
-                                        Text {
-                                            anchors.bottom: parent.bottom
-                                            anchors.right: parent.right
-                                            anchors.top: parent.top
-                                            color: Theme.deckTextColor
-                                            font.pixelSize: 16
-                                            text: modelData?.suffix || ''
-                                        }
-                                    }
-                                    MouseArea {
-                                        id: footerItemMouseArea
-
-                                        anchors.fill: parent
-                                        cursorShape: Qt.PointingHandCursor
-
-                                        onPressed: {
-                                            root.activateFooter(index);
-                                        }
-                                    }
+                                onPressed: {
+                                    root.activateFooter(index);
+                                    root.popup.close();
                                 }
                             }
                         }
                     }
                 }
-            }
-            DropShadow {
-                anchors.fill: parent
-                color: "#000000"
-                horizontalOffset: 0
-                radius: 8.0
-                source: content
-                verticalOffset: 0
             }
         }
     }

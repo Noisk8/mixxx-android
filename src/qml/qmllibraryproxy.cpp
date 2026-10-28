@@ -1,13 +1,16 @@
 #include "qml/qmllibraryproxy.h"
 
 #include <QAbstractItemModel>
+#include <QDir>
 #include <QLocale>
 #include <QQmlEngine>
 #include <QSqlDatabase>
+#include <QSqlQuery>
+#include <QStandardPaths>
 #include <QStringList>
-#include <QUrl>
 #include <cmath>
 
+#include "analyzer/analyzerscheduledtrack.h"
 #include "control/controlobject.h"
 #include "library/dao/analysisdao.h"
 #include "library/library.h"
@@ -306,6 +309,56 @@ void QmlLibraryProxy::analyze(const QmlTrackProxy* track) const {
     emit s_pLibrary->analyzeTracks({track->internal()->getId()});
 }
 
+void QmlLibraryProxy::analyzeAllTracks() const {
+    if (!s_pLibrary || !m_pTrackCollectionManager) {
+        return;
+    }
+    const auto pTrackCollection = m_pTrackCollectionManager->internalCollection();
+    if (!pTrackCollection) {
+        return;
+    }
+    QSqlQuery query(pTrackCollection->database());
+    query.prepare(QStringLiteral("SELECT id FROM library WHERE mixxx_deleted = 0"));
+    if (!query.exec()) {
+        return;
+    }
+    QList<AnalyzerScheduledTrack> tracks;
+    while (query.next()) {
+        TrackId id(query.value(0));
+        if (id.isValid()) {
+            tracks.append(id);
+        }
+    }
+    if (!tracks.isEmpty()) {
+        emit s_pLibrary->analyzeTracks(tracks);
+    }
+}
+
+void QmlLibraryProxy::analyzeUnanalyzedTracks() const {
+    if (!s_pLibrary || !m_pTrackCollectionManager) {
+        return;
+    }
+    const auto pTrackCollection = m_pTrackCollectionManager->internalCollection();
+    if (!pTrackCollection) {
+        return;
+    }
+    QSqlQuery query(pTrackCollection->database());
+    query.prepare(QStringLiteral("SELECT id FROM library WHERE mixxx_deleted = 0 AND (bpm = 0 OR bpm IS NULL OR key IS NULL OR key = '')"));
+    if (!query.exec()) {
+        return;
+    }
+    QList<AnalyzerScheduledTrack> tracks;
+    while (query.next()) {
+        TrackId id(query.value(0));
+        if (id.isValid()) {
+            tracks.append(id);
+        }
+    }
+    if (!tracks.isEmpty()) {
+        emit s_pLibrary->analyzeTracks(tracks);
+    }
+}
+
 void QmlLibraryProxy::createCrate() {
     VERIFY_OR_DEBUG_ASSERT(s_pLibrary) {
         return;
@@ -554,49 +607,31 @@ QmlLibraryProxy* QmlLibraryProxy::create(QQmlEngine* pQmlEngine, QJSEngine* pJsE
     return new QmlLibraryProxy(pQmlEngine);
 }
 
-namespace {
-
-/// Convert a path or URL coming from the QML settings into a plain
-/// filesystem path. QML may pass an absolute path or a file:// URL.
-/// QUrl::toLocalFile() returns an empty string for scheme-less URLs,
-/// therefore the string is only parsed as URL when it has a file scheme.
-QString libraryDirectoryPath(const QString& pathOrUrl) {
-    if (pathOrUrl.startsWith(QLatin1String("file:"))) {
-        const QString localFile = QUrl(pathOrUrl, QUrl::TolerantMode).toLocalFile();
-        if (!localFile.isEmpty()) {
-            return localFile;
-        }
-    }
-    return pathOrUrl;
-}
-
-} // namespace
-
 QmlLibraryProxy::AddResult QmlLibraryProxy::addSource(
-        const QString& newPath) {
+        const QUrl& newPath) {
     VERIFY_OR_DEBUG_ASSERT(s_pLibrary) {
         qWarning() << "Library hasn't been registered yet!";
         return QmlLibraryProxy::AddResult::InvalidOrMissingDirectory;
     }
-    const QString path = libraryDirectoryPath(newPath);
-    QDir directory(path);
+    QDir directory(newPath.toLocalFile());
     Sandbox::createSecurityTokenForDir(directory);
-    return static_cast<QmlLibraryProxy::AddResult>(
+    auto result = static_cast<QmlLibraryProxy::AddResult>(
             s_pLibrary->trackCollectionManager()->addDirectory(
-                    mixxx::FileInfo(path)));
+                    mixxx::FileInfo(newPath.toLocalFile())));
+    emit sourcesChanged();
+    return result;
 }
 
 QmlLibraryProxy::RemoveResult QmlLibraryProxy::removeSource(
-        const QString& oldPath, SourceRemovalType removalType) {
+        const QUrl& oldPath, SourceRemovalType removalType) {
     VERIFY_OR_DEBUG_ASSERT(s_pLibrary) {
         qWarning() << "Library hasn't been registered yet!";
         return QmlLibraryProxy::RemoveResult::NotFound;
     }
 
-    const QString path = libraryDirectoryPath(oldPath);
     DirectoryDAO::RemoveResult result =
             s_pLibrary->trackCollectionManager()->removeDirectory(
-                    mixxx::FileInfo(path));
+                    mixxx::FileInfo(oldPath.toLocalFile()));
     if (result != DirectoryDAO::RemoveResult::Ok) {
         return static_cast<QmlLibraryProxy::RemoveResult>(result);
     }
@@ -607,27 +642,110 @@ QmlLibraryProxy::RemoveResult QmlLibraryProxy::removeSource(
     case SourceRemovalType::HideTracks:
         // Mark all tracks in this directory as deleted but DON'T purge them
         // in case the user re-adds them manually.
-        s_pLibrary->trackCollectionManager()->hideAllTracks(path);
+        s_pLibrary->trackCollectionManager()->hideAllTracks(oldPath.toLocalFile());
         break;
     case SourceRemovalType::PurgeTracks:
         // The user requested that we purge all metadata.
-        s_pLibrary->trackCollectionManager()->purgeAllTracks(path);
+        s_pLibrary->trackCollectionManager()->purgeAllTracks(oldPath.toLocalFile());
         break;
     default:
         DEBUG_ASSERT(!"unreachable");
     }
+    emit sourcesChanged();
     return static_cast<QmlLibraryProxy::RemoveResult>(result);
 }
 
 QmlLibraryProxy::RelocateResult QmlLibraryProxy::relinkSource(
-        const QString& oldPath, const QString& newPath) {
+        const QUrl& oldPath, const QUrl& newPath) {
     VERIFY_OR_DEBUG_ASSERT(s_pLibrary) {
         qWarning() << "Library hasn't been registered yet!";
         return QmlLibraryProxy::RelocateResult::SqlError;
     }
-    return static_cast<QmlLibraryProxy::RelocateResult>(
+    auto result = static_cast<QmlLibraryProxy::RelocateResult>(
             s_pLibrary->trackCollectionManager()->relocateDirectory(
-                    libraryDirectoryPath(oldPath), libraryDirectoryPath(newPath)));
+                    oldPath.toLocalFile(), newPath.toLocalFile()));
+    emit sourcesChanged();
+    return result;
+}
+
+QVariantList QmlLibraryProxy::getSourcesList() const {
+    QVariantList list;
+    if (!s_pLibrary || !s_pLibrary->trackCollectionManager()) {
+        return list;
+    }
+    const auto roots = s_pLibrary->trackCollectionManager()
+                               ->internalCollection()
+                               ->getRootDirectories();
+    for (const auto& r : roots) {
+        QVariantMap item;
+        item[QStringLiteral("path")] = r.path;
+        item[QStringLiteral("trackCount")] = r.trackCount;
+        item[QStringLiteral("totalSecond")] = r.totalSecond;
+        list.append(item);
+    }
+    return list;
+}
+
+bool QmlLibraryProxy::addSourcePath(const QString& rawPath) {
+    if (!s_pLibrary || rawPath.trimmed().isEmpty()) {
+        return false;
+    }
+    QString cleanPath = rawPath.trimmed();
+    if (cleanPath.startsWith(QStringLiteral("file://"))) {
+        cleanPath = QUrl(cleanPath).toLocalFile();
+    }
+    QDir dir(cleanPath);
+    if (!dir.exists()) {
+        return false;
+    }
+    Sandbox::createSecurityTokenForDir(dir);
+    auto res = s_pLibrary->trackCollectionManager()->addDirectory(mixxx::FileInfo(cleanPath));
+    emit sourcesChanged();
+    return (res == DirectoryDAO::AddResult::Ok || res == DirectoryDAO::AddResult::AlreadyWatching);
+}
+
+bool QmlLibraryProxy::removeSourcePath(const QString& rawPath) {
+    if (!s_pLibrary || rawPath.trimmed().isEmpty()) {
+        return false;
+    }
+    QString cleanPath = rawPath.trimmed();
+    if (cleanPath.startsWith(QStringLiteral("file://"))) {
+        cleanPath = QUrl(cleanPath).toLocalFile();
+    }
+    auto res = s_pLibrary->trackCollectionManager()->removeDirectory(mixxx::FileInfo(cleanPath));
+    emit sourcesChanged();
+    return (res == DirectoryDAO::RemoveResult::Ok);
+}
+
+QStringList QmlLibraryProxy::getSubDirectories(const QString& rawPath) const {
+    QString path = rawPath.trimmed();
+    if (path.isEmpty()) {
+#if defined(Q_OS_ANDROID)
+        path = QStringLiteral("/storage/emulated/0");
+#else
+        path = QDir::homePath();
+#endif
+    }
+    if (path.startsWith(QStringLiteral("file://"))) {
+        path = QUrl(path).toLocalFile();
+    }
+    QDir dir(path);
+    if (!dir.exists() || !dir.isReadable()) {
+        return {};
+    }
+    return dir.entryList(QDir::Dirs | QDir::NoDotAndDotDot | QDir::Readable, QDir::Name);
+}
+
+QString QmlLibraryProxy::defaultMusicDirectory() const {
+#if defined(Q_OS_ANDROID)
+    return QStringLiteral("/storage/emulated/0/Music");
+#else
+    QStringList paths = QStandardPaths::standardLocations(QStandardPaths::MusicLocation);
+    if (!paths.isEmpty()) {
+        return paths.first();
+    }
+    return QDir::homePath();
+#endif
 }
 
 // Static

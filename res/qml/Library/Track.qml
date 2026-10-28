@@ -17,13 +17,13 @@ Item {
 
     DragHandler {
         id: dragHandler
-
-        target: value
+        enabled: false // Disabled on touch devices so TableView/Flickable scrolls smoothly
     }
     TapHandler {
         id: tapHandler
 
         acceptedButtons: Qt.LeftButton | Qt.RightButton
+        gesturePolicy: TapHandler.DragThreshold
 
         onLongPressed: mouse => {
             contextMenu.popup();
@@ -38,6 +38,17 @@ Item {
         id: contextMenu
 
         title: qsTr("File")
+
+        MenuItem {
+            text: qsTr("◀ Cargar en Deck 1 / Load Deck 1")
+            onTriggered: Mixxx.PlayerManager.getPlayer("[Channel1]").loadTrack(track)
+        }
+        MenuItem {
+            text: qsTr("Cargar en Deck 2 ▶ / Load Deck 2")
+            onTriggered: Mixxx.PlayerManager.getPlayer("[Channel2]").loadTrack(track)
+        }
+        MenuSeparator {
+        }
 
         Menu {
             enabled: {

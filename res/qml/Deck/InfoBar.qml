@@ -1,393 +1,312 @@
 import ".." as Skin
 import Mixxx 1.0 as Mixxx
-import Qt5Compat.GraphicalEffects
 import QtQuick 2.12
-import QtQuick.Shapes
 import QtQuick.Layouts
-import QtQml.Models // DelegateChoice for Qt >= 6.9
-import Qt.labs.qmlmodels // DelegateChooser
 import "../Theme"
 
 Rectangle {
     id: root
 
-    property list<string> availableData: ["none", "title", "year", "time", "artist", "rating"]
     readonly property var currentTrack: deckPlayer?.currentTrack
     property var deckPlayer: Mixxx.PlayerManager.getPlayer(group)
     property bool editMode: false
     required property string group
-    property color lineColor: Theme.deckLineColor
     property bool minimized: false
     required property int rightColumnWidth
 
-    radius: 5
+    readonly property bool isDeck1: group === "[Channel1]"
+    readonly property bool isDeck2: group === "[Channel2]"
+    readonly property color deckColor: isDeck1 ? "#00b0ff" : (isDeck2 ? "#ff6d00" : (group === "[Channel3]" ? "#00e676" : "#e040fb"))
+    readonly property color deckBgColor: isDeck1 ? "#0d47a1" : (isDeck2 ? "#bf360c" : "#263238")
+    readonly property string deckName: isDeck1 ? "DECK 1" : (isDeck2 ? "DECK 2" : (group === "[Channel3]" ? "DECK 3" : "DECK 4"))
 
-    gradient: Gradient {
-        orientation: Gradient.Horizontal
+    radius: 6
+    color: "#181b22"
+    border.color: isDeck1 ? "#00b0ff44" : (isDeck2 ? "#ff6d0044" : "#303644")
+    border.width: 1
 
-        GradientStop {
-            color: {
-                const trackColor = root.currentTrack?.color;
-                if (!trackColor.valid)
-                    return Theme.deckInfoBarBackgroundColor;
+    signal triggerLoadTrack()
 
-                return Qt.darker(root.currentTrack?.color, 2);
-            }
-            position: 0
-        }
-        GradientStop {
-            color: Theme.deckInfoBarBackgroundColor
-            position: 1
-        }
+    Mixxx.ControlProxy {
+        id: bpmControl
+        group: root.group
+        key: "bpm"
     }
 
-    Image {
-        id: coverArt
-
-        anchors.bottom: parent.bottom
-        anchors.left: parent.left
-        anchors.top: parent.top
-        asynchronous: true
-        source: root.currentTrack?.coverArtUrl
-        visible: false
-        width: height
+    Mixxx.ControlProxy {
+        id: rateControl
+        group: root.group
+        key: "rate"
     }
-    Rectangle {
-        id: coverArtCircle
 
-        anchors.fill: coverArt
-        color: Theme.deckEmptyCoverArt
-        radius: 4
-        visible: !root.deckPlayer?.isLoaded && !root.minimized
+    Mixxx.ControlProxy {
+        id: durationControl
+        group: root.group
+        key: "duration"
     }
-    OpacityMask {
-        id: coverArtMask
 
-        anchors.fill: coverArt
-        maskSource: coverArtCircle
-        source: coverArt
-        visible: root.deckPlayer?.isLoaded && !root.minimized
-
-        Skin.FadeBehavior on visible {
-            fadeTarget: coverArtMask
-        }
+    Mixxx.ControlProxy {
+        id: playPositionControl
+        group: root.group
+        key: "playposition"
     }
-    DelegateChooser {
-        id: cellDelegate
 
-        role: "type"
-
-        DelegateChoice {
-            roleValue: "title"
-
-            Cell {
-                item.font.bold: false
-                item.font.weight: root.deckPlayer?.isLoaded ? Font.DemiBold : Font.Thin
-                item.text: root.deckPlayer?.isLoaded ? root.currentTrack?.title : "No track loaded"
-                item.visible: true
-            }
-        }
-        DelegateChoice {
-            roleValue: "artist"
-
-            Cell {
-                item.text: root.currentTrack?.artist
-            }
-        }
-        DelegateChoice {
-            roleValue: "year"
-
-            Cell {
-                item.text: root.currentTrack?.year
-                visible: root.width > 500 && root.currentTrack?.year
-            }
-        }
-        DelegateChoice {
-            roleValue: "time"
-
-            Cell {
-                visible: root.width > 450
-                item.text: time.text
-
-                Mixxx.ControlProxy {
-                    id: durationControl
-
-                    group: root.group
-                    key: "duration"
-                }
-                Mixxx.ControlProxy {
-                    id: playPositionControl
-
-                    group: root.group
-                    key: "playposition"
-                }
-
-                TrackTime {
-                    id: time
-                    display: Mixxx.Config.controlPositionDisplay
-                    elapsed: durationControl.value * playPositionControl.value
-                    mode: Mixxx.Config.controlTimeFormat
-                    remaining: durationControl.value * (1 - playPositionControl.value)
-                    visible: false
-                }
-            }
-        }
-        DelegateChoice {
-            roleValue: "rating"
-
-            Item {
-                id: cell
-
-                required property int index
-                property real ratio: ((rateRatioControl.value - 1) * 100).toPrecision(2)
-                property bool showSeparator: index != parent.model.count - 1 && root.deckPlayer?.isLoaded
-
-                Layout.fillHeight: true
-                Layout.fillWidth: index == 0
-                Layout.preferredWidth: index == 0 ? 0 : rightColumnWidth
-                visible: root.width > 400
-
-                Mixxx.ControlProxy {
-                    id: rateRatioControl
-
-                    group: root.group
-                    key: "rate_ratio"
-                }
-                Row {
-                    id: stars
-
-                    anchors.centerIn: parent
-                    spacing: 0
-                    visible: root.deckPlayer?.isLoaded
-
-                    Repeater {
-                        model: 5
-
-                        Shape {
-                            id: star
-
-                            antialiasing: true
-                            height: 14
-                            layer.enabled: true
-                            layer.samples: 4
-                            width: 16
-
-                            ShapePath {
-                                fillColor: mouse.containsMouse && !(mouse.pressedButtons & Qt.RightButton) && mouse.mouseX > star.x + stars.x ? "#3a60be" : (!mouse.containsMouse || mouse.pressedButtons & Qt.RightButton) && root.currentTrack?.stars > index ? (mouse.containsMouse ? "#7D3B3B" : '#D9D9D9') : '#96d9d9d9'
-                                startX: 8
-                                startY: 0
-                                strokeColor: 'transparent'
-
-                                PathLine {
-                                    x: 9.78701
-                                    y: 5.18237
-                                }
-                                PathLine {
-                                    x: 15.3496
-                                    y: 5.18237
-                                }
-                                PathLine {
-                                    x: 10.8494
-                                    y: 8.38525
-                                }
-                                PathLine {
-                                    x: 12.5683
-                                    y: 13.5676
-                                }
-                                PathLine {
-                                    x: 8.06808
-                                    y: 10.3647
-                                }
-                                PathLine {
-                                    x: 3.56787
-                                    y: 13.5676
-                                }
-                                PathLine {
-                                    x: 5.2868
-                                    y: 8.38525
-                                }
-                                PathLine {
-                                    x: 0.786587
-                                    y: 5.18237
-                                }
-                                PathLine {
-                                    x: 6.34915
-                                    y: 5.18237
-                                }
-                                PathLine {
-                                    x: 8.06808
-                                    y: 0
-                                }
-                            }
-                        }
-                    }
-                }
-                MouseArea {
-                    id: mouse
-
-                    acceptedButtons: Qt.LeftButton | Qt.RightButton
-                    anchors.fill: parent
-                    hoverEnabled: true
-
-                    onClicked: event => {
-                        if (!root.currentTrack) {
-                            return;
-                        }
-                        let selectedStars = Math.ceil((mouseX - stars.x) / 16);
-                        if (event.button === Qt.RightButton) {
-                            root.currentTrack.stars = 0;
-                        } else if (selectedStars >= 0 && selectedStars <= 5) {
-                            root.currentTrack.stars = selectedStars;
-                        }
-                    }
-                }
-                Rectangle {
-                    id: separator
-
-                    anchors.bottom: cell.bottom
-                    anchors.right: cell.right
-                    anchors.top: cell.top
-                    anchors.topMargin: 5
-                    color: root.lineColor
-                    visible: showSeparator
-                    width: 2
-
-                    Skin.FadeBehavior on visible {
-                        fadeTarget: separator
-                    }
-                }
-            }
-        }
+    Mixxx.ControlProxy {
+        id: keyControl
+        group: root.group
+        key: "visual_key"
     }
-    ListModel {
-        id: topRowModel
 
-        ListElement {
-            type: "title"
-        }
-        ListElement {
-            type: "year"
-        }
-        ListElement {
-            type: "time"
-        }
+    Mixxx.ControlProxy {
+        id: pflControl
+        group: root.group
+        key: "pfl"
     }
-    ListModel {
-        id: bottomRowModel
 
-        ListElement {
-            type: "artist"
-        }
-        ListElement {
-            type: "none"
-        }
-        ListElement {
-            type: "rating"
-        }
-    }
-    Component {
-        id: editCellDelegate
+    RowLayout {
+        anchors.fill: parent
+        anchors.leftMargin: 6
+        anchors.rightMargin: 6
+        spacing: 8
 
-        Skin.ComboBox {
-            required property int index
-            readonly property var modelData: parent.model
-            required property string type
-
-            Layout.fillHeight: true
-            Layout.fillWidth: index == 0
-            Layout.preferredWidth: index == 0 ? 0 : rightColumnWidth
-            currentIndex: root.availableData.indexOf(type)
-            model: root.availableData
-
-            onCurrentIndexChanged: {
-                modelData.setProperty(index, "type", root.availableData[currentIndex]);
-            }
-        }
-    }
-    ColumnLayout {
-        anchors.bottom: root.bottom
-        anchors.left: coverArt.right
-        anchors.right: root.right
-        anchors.top: root.top
-        spacing: 0
-
-        RowLayout {
-            id: topRow
-
-            readonly property bool isTop: true
-            property var model: topRowModel
-
-            Layout.fillHeight: true
-            Layout.fillWidth: true
-
-            Repeater {
-                delegate: root.editMode ? editCellDelegate : cellDelegate
-                model: parent.model
-            }
-        }
+        // ================= 1. DECK BADGE =================
         Rectangle {
-            Layout.fillWidth: true
-            color: root.lineColor
-            height: 2
-            visible: !root.minimized
-        }
-        RowLayout {
-            id: bottomRow
+            Layout.preferredHeight: root.minimized ? 22 : 36
+            Layout.preferredWidth: (root.width < 360) ? 48 : (root.minimized ? 54 : 62)
+            radius: 4
+            color: root.deckBgColor
+            border.color: root.deckColor
+            border.width: 1
 
-            property var model: bottomRowModel
-
-            Layout.fillHeight: true
-            Layout.fillWidth: true
-            visible: !root.minimized
-
-            Repeater {
-                delegate: root.editMode ? editCellDelegate : cellDelegate
-                model: parent.model
+            Text {
+                anchors.centerIn: parent
+                font.bold: true
+                font.pixelSize: (root.width < 360 || root.minimized) ? 9 : 11
+                font.letterSpacing: 1
+                color: "#ffffff"
+                text: root.deckName
             }
         }
-    }
 
-    component Cell: Item {
-        id: cell
-
-        required property int index
-        readonly property bool isTop: !!parent.isTop
-        property alias item: data
-        property bool showSeparator: index != parent.model.count - 1 && root.deckPlayer?.isLoaded
-
-        Layout.fillHeight: true
-        Layout.fillWidth: index == 0
-        Layout.leftMargin: index == 0 ? 10 : 0
-        Layout.preferredWidth: index == 0 ? 0 : rightColumnWidth
-
-        Skin.EmbeddedText {
-            id: data
-
-            anchors.fill: parent
-            color: Theme.white
-            font.bold: isTop
-            font.pixelSize: isTop ? 18 : Theme.textFontPixelSize
-            horizontalAlignment: index == 0 ? Text.AlignLeft : Text.AlignHCenter
-            visible: root.deckPlayer?.isLoaded
-
-            Skin.FadeBehavior on visible {
-                fadeTarget: data
-            }
-        }
+        // ================= 2. COVER ART THUMBNAIL =================
         Rectangle {
-            id: separator
+            Layout.preferredHeight: root.minimized ? 22 : 36
+            Layout.preferredWidth: root.minimized ? 22 : 36
+            radius: 4
+            color: "#222734"
+            clip: true
+            visible: !root.minimized && root.width >= 400
 
-            anchors.bottom: cell.bottom
-            anchors.bottomMargin: isTop ? 0 : 5
-            anchors.right: cell.right
-            anchors.top: cell.top
-            anchors.topMargin: isTop ? 5 : 0
-            color: root.lineColor
-            visible: showSeparator
-            width: 2
+            Image {
+                anchors.fill: parent
+                asynchronous: true
+                source: root.currentTrack?.coverArtUrl || ""
+                fillMode: Image.PreserveAspectCrop
+                visible: status === Image.Ready
+            }
 
-            Skin.FadeBehavior on visible {
-                fadeTarget: separator
+            Text {
+                anchors.centerIn: parent
+                text: "♫"
+                font.pixelSize: 14
+                color: "#90a4ae"
+                visible: !root.currentTrack?.coverArtUrl
+            }
+        }
+
+        // ================= 3. TITLE & ARTIST =================
+        ColumnLayout {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            Layout.alignment: Qt.AlignVCenter
+            spacing: 1
+
+            Text {
+                Layout.fillWidth: true
+                text: (root.deckPlayer?.isLoaded && root.currentTrack?.title)
+                    ? root.currentTrack.title
+                    : qsTr("Sin pista - Pulsa CARGAR")
+                color: root.deckPlayer?.isLoaded ? "#ffffff" : "#90a4ae"
+                font.bold: true
+                font.pixelSize: (root.width < 360 || root.minimized) ? 10 : 12
+                elide: Text.ElideRight
+            }
+
+            Text {
+                Layout.fillWidth: true
+                visible: !root.minimized && root.deckPlayer?.isLoaded && root.width >= 340
+                text: (root.currentTrack?.artist ? root.currentTrack.artist : "") +
+                      (root.currentTrack?.album ? (" • " + root.currentTrack.album) : "")
+                color: root.deckColor
+                font.pixelSize: 10
+                elide: Text.ElideRight
+            }
+        }
+
+        // ================= 4. BPM & PITCH PILL (PROMINENT) =================
+        Rectangle {
+            Layout.preferredHeight: root.minimized ? 22 : 36
+            Layout.preferredWidth: bpmCol.implicitWidth + 10
+            radius: 4
+            color: "#12151c"
+            border.color: root.deckColor
+            border.width: 1
+
+            ColumnLayout {
+                id: bpmCol
+                anchors.centerIn: parent
+                spacing: 0
+
+                Text {
+                    id: bpmText
+                    Layout.alignment: Qt.AlignHCenter
+                    font.bold: true
+                    font.pixelSize: (root.width < 360 || root.minimized) ? 10 : 12
+                    color: bpmControl.value > 0 ? "#ffffff" : "#78909c"
+                    text: bpmControl.value > 0 ? (bpmControl.value.toFixed(2) + " BPM") : "--.-- BPM"
+                }
+
+                Text {
+                    visible: !root.minimized && bpmControl.value > 0
+                    Layout.alignment: Qt.AlignHCenter
+                    font.bold: true
+                    font.pixelSize: 9
+                    color: root.deckColor
+                    text: {
+                        var p = rateControl.value * 8.0;
+                        return (p > 0 ? "+" : "") + p.toFixed(1) + "%";
+                    }
+                }
+            }
+        }
+
+        // ================= 5. KEY PILL =================
+        Rectangle {
+            visible: !root.minimized && keyControl.value !== "" && keyControl.value !== undefined && root.width >= 360
+            Layout.preferredHeight: 28
+            Layout.preferredWidth: keyText.implicitWidth + 10
+            radius: 4
+            color: "#1e2433"
+            border.color: "#374151"
+            border.width: 1
+
+            Text {
+                id: keyText
+                anchors.centerIn: parent
+                font.bold: true
+                font.pixelSize: 10
+                color: "#e0e0e0"
+                text: keyControl.value ? keyControl.value.toString() : ""
+            }
+        }
+
+        // ================= 6. TIME REMAINING =================
+        // ================= 6. TIME (ELAPSED / TOTAL / REMAINING) =================
+        Rectangle {
+            id: timeBadge
+            property int timeMode: 0 // 0: Elapsed / Total (ej: 0:15 / 3:45), 1: Remaining (-3:30), 2: Elapsed (0:15)
+            visible: root.width >= 330
+            Layout.preferredHeight: root.minimized ? 22 : 36
+            Layout.preferredWidth: Math.max(76, timeText.implicitWidth + 14)
+            radius: 4
+            color: "#141720"
+            border.color: timeMouse.containsMouse ? "#64b5f6" : "#293040"
+            border.width: 1
+
+            Text {
+                id: timeText
+                anchors.centerIn: parent
+                font.bold: true
+                font.pixelSize: (root.width < 360 || root.minimized) ? 10 : 11
+                color: "#e0e6ed"
+                text: {
+                    var total = durationControl.value || 0;
+                    var pos = playPositionControl.value || 0;
+                    if (total <= 0) return "--:--";
+
+                    var cur = Math.max(0, Math.min(total, total * pos));
+                    var rem = Math.max(0, total - cur);
+
+                    function fmt(sec) {
+                        var m = Math.floor(sec / 60);
+                        var s = Math.floor(sec % 60);
+                        return m + ":" + (s < 10 ? "0" : "") + s;
+                    }
+
+                    if (timeBadge.timeMode === 0) {
+                        return fmt(cur) + " / " + fmt(total);
+                    } else if (timeBadge.timeMode === 1) {
+                        return "-" + fmt(rem);
+                    } else {
+                        return fmt(cur);
+                    }
+                }
+            }
+
+            MouseArea {
+                id: timeMouse
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onClicked: {
+                    timeBadge.timeMode = (timeBadge.timeMode + 1) % 3;
+                }
+            }
+        }
+
+        // ================= 7. PFL / HEADPHONE CUE =================
+        Rectangle {
+            id: pflButton
+            Layout.preferredHeight: root.minimized ? 24 : 36
+            Layout.preferredWidth: (root.width < 360) ? 36 : 44
+            radius: 4
+            color: pflControl.value > 0 ? "#ff9800" : (pflMouse.pressed ? "#2a2d36" : "#1a1e27")
+            border.color: pflControl.value > 0 ? "#ffe082" : "#323947"
+            border.width: 1
+
+            RowLayout {
+                anchors.centerIn: parent
+                spacing: 2
+                Text {
+                    text: "🎧"
+                    font.pixelSize: (root.width < 360 || root.minimized) ? 11 : 13
+                }
+                Text {
+                    visible: !root.minimized && root.width >= 420
+                    text: "CUE"
+                    font.bold: true
+                    font.pixelSize: 10
+                    color: pflControl.value > 0 ? "#000000" : "#b0bec5"
+                }
+            }
+
+            MouseArea {
+                id: pflMouse
+                anchors.fill: parent
+                onClicked: {
+                    pflControl.value = (pflControl.value > 0) ? 0 : 1;
+                }
+            }
+        }
+
+        // ================= 8. LOAD / CARGAR BUTTON =================
+        Skin.Button {
+            id: loadButton
+            Layout.preferredHeight: root.minimized ? 24 : 36
+            Layout.preferredWidth: (root.width < 360) ? 58 : (root.minimized ? 66 : 76)
+            activeColor: root.isDeck1 ? "#64b5f6" : "#ffb74d"
+            backgroundColor: root.isDeck1 ? "#1565c0" : "#e65100"
+            normalColor: "#ffffff"
+            font.bold: true
+            font.pixelSize: (root.width < 360 || root.minimized) ? 9 : 11
+            text: (root.width < 360) ? "LOAD" : "CARGAR"
+
+            onClicked: {
+                if (typeof root.Window?.window?.openQuickLoad === "function") {
+                    root.Window.window.openQuickLoad(root.group);
+                } else {
+                    root.triggerLoadTrack();
+                }
             }
         }
     }

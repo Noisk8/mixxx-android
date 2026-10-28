@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Class-compliant USB MIDI DJ Controllers (Audio Class 1, Subclass 3 = MIDISTREAMING) -->
+    <usb-device class="1" subclass="3" />
+    <!-- Specific HID / Bulk DJ Controllers -->
+    <usb-device vendor-id="0x06f8" product-id="0x0b105" />
+    <usb-device vendor-id="0x06f8" product-id="0x0b120" />
+    <usb-device vendor-id="0x1157" product-id="0x300" />
+    <usb-device vendor-id="0x17cc" product-id="0x1101" />
+    <usb-device vendor-id="0x17cc" product-id="0x1120" />
+    <usb-device vendor-id="0x17cc" product-id="0x1210" />
+    <usb-device vendor-id="0x17cc" product-id="0x1310" />
+    <usb-device vendor-id="0x17cc" product-id="0x1320" />
+    <usb-device vendor-id="0x17cc" product-id="0x1710" />
+    <usb-device vendor-id="0x17cc" product-id="0x1720" />
+    <usb-device vendor-id="0x17cc" product-id="0x1900" />
+    <usb-device vendor-id="0x17cc" product-id="0x2420" />
+    <usb-device vendor-id="0x54c" product-id="0x268" />
+    <usb-device vendor-id="0x57e" product-id="0x306" />
+    <usb-device vendor-id="0x57e" product-id="0x330" />
+    <usb-device vendor-id="0x8e4" product-id="0x14a" />
+    <usb-device vendor-id="0x8e4" product-id="0x14b" />
+    <usb-device vendor-id="0x8e4" product-id="0x157" />
+</resources>

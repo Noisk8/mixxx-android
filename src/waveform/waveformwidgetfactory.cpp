@@ -11,9 +11,6 @@
 #include <QGLShaderProgram>
 #endif
 #ifdef Q_OS_ANDROID
-#ifdef __ANDROID__
-#include <android/log.h>
-#endif
 #include <GLES3/gl3.h>
 #endif
 
@@ -48,15 +45,6 @@
 #include "widget/wvumeterbase.h"
 #include "widget/wvumeterlegacy.h"
 #include "widget/wwaveformviewer.h"
-
-namespace {
-void logWaveformDiag(const QString& message) {
-    qDebug().noquote() << "[WaveformWidgetFactory]" << message;
-#ifdef __ANDROID__
-    __android_log_print(ANDROID_LOG_WARN, "MixxxWaveform", "%s", message.toUtf8().constData());
-#endif
-}
-} // namespace
 
 namespace {
 
@@ -242,17 +230,6 @@ WaveformWidgetFactory::WaveformWidgetFactory()
                 m_openGlesAvailable = isOpenGles && combinedVersion >= 200;
                 m_openGlAvailable = !isOpenGles && combinedVersion >= 201;
             }
-
-            logWaveformDiag(QStringLiteral("OpenGL detection: version=%1 major=%2 minor=%3 eglfs=%4 gles=%5 shaders=%6 glAvail=%7 glesAvail=%8 renderer=%9")
-                                    .arg(versionString)
-                                    .arg(majorVersion)
-                                    .arg(minorVersion)
-                                    .arg(isEglfs)
-                                    .arg(isOpenGles)
-                                    .arg(m_openGLShaderAvailable)
-                                    .arg(m_openGlAvailable)
-                                    .arg(m_openGlesAvailable)
-                                    .arg(rendererString));
 
             if (!rendererString.isEmpty()) {
                 m_openGLVersion += QStringLiteral(" (") + rendererString + QChar(')');
@@ -552,20 +529,6 @@ void WaveformWidgetFactory::addVuMeter(WVuMeterBase* pVuMeter) {
 }
 
 void WaveformWidgetFactory::slotSkinLoaded() {
-#ifdef Q_OS_ANDROID
-    // Skin loading may run configuration migrations that adjust the frame
-    // rate after setConfig() already read it. Pick the final value up here
-    // so the first session after a migration is correct.
-    if (m_config) {
-        const int frameRate = m_config->getValue(kFrameRateKey, m_frameRate);
-        if (frameRate != m_frameRate) {
-            logWaveformDiag(QStringLiteral("slotSkinLoaded: frame rate %1 -> %2")
-                                    .arg(m_frameRate)
-                                    .arg(frameRate));
-            setFrameRate(frameRate);
-        }
-    }
-#endif
     setWidgetTypeFromConfig();
 #if QT_VERSION >= QT_VERSION_CHECK(5, 14, 0) && defined __WINDOWS__
     // This regenerates the waveforms twice because of a bug found on Windows
@@ -699,9 +662,6 @@ bool WaveformWidgetFactory::setWidgetTypeFromConfig() {
     // which prevents loading the desired type.
     // Fix: enable acceleration if available and if type requires it.
     auto backend = getBackendFromConfig();
-    logWaveformDiag(QStringLiteral("setWidgetTypeFromConfig: resolved backend=%1 (0=None 2=GLSL 3=AllShader) frameRate=%2")
-                            .arg(static_cast<int>(backend))
-                            .arg(m_frameRate));
     // True if type and available backends support acceleration
     bool typeSupportsAcceleration = widgetTypeSupportsAcceleration(m_configType);
     bool typeSupportsSoftware = widgetTypeSupportsSoftware(m_configType);
@@ -1059,23 +1019,17 @@ void WaveformWidgetFactory::addHandle(
         const WaveformWidgetVars& vars) const {
     WaveformWidgetBackend backend = WaveformWidgetBackend::None;
     bool active = true;
-    QStringList deactivateReasons;
-
     if (isOpenGlAvailable()) {
         if (vars.m_useGLES && !vars.m_useGL) {
             active = false;
-            deactivateReasons << QStringLiteral("OpenGL available but vars require GLES only (m_useGLES=%1, m_useGL=%2)").arg(vars.m_useGLES).arg(vars.m_useGL);
         } else if (vars.m_useGLSL && !isOpenGlShaderAvailable()) {
             active = false;
-            deactivateReasons << QStringLiteral("OpenGL available but GLSL required and shaders not available (m_useGLSL=%1, isOpenGlShaderAvailable=%2)").arg(vars.m_useGLSL).arg(isOpenGlShaderAvailable());
         }
     } else if (isOpenGlesAvailable()) {
         if (vars.m_useGL && !vars.m_useGLES) {
             active = false;
-            deactivateReasons << QStringLiteral("OpenGLES available but vars require GL only (m_useGL=%1, m_useGLES=%2)").arg(vars.m_useGL).arg(vars.m_useGLES);
         } else if (vars.m_useGLSL && !isOpenGlShaderAvailable()) {
             active = false;
-            deactivateReasons << QStringLiteral("OpenGLES available but GLSL required and shaders not available (m_useGLSL=%1, isOpenGlShaderAvailable=%2)").arg(vars.m_useGLSL).arg(isOpenGlShaderAvailable());
         }
     } else {
         // No sufficient GL support
@@ -1087,21 +1041,16 @@ void WaveformWidgetFactory::addHandle(
         if (!WaveformWidgetFactory::isQmlMode() ||
                 (vars.m_category != WaveformWidgetCategory::AllShader &&
                         (vars.m_useGLES || vars.m_useGL || vars.m_useGLSL))) {
-            active = false;
-            deactivateReasons << QStringLiteral("No sufficient GL support (QML mode, not AllShader category)");
-        }
 #else
         if (vars.m_useGLES || vars.m_useGL || vars.m_useGLSL) {
-            active = false;
-            deactivateReasons << QStringLiteral("No sufficient GL support (non-QML mode, requires GL/GLES/GLSL)");
-        }
 #endif
+            active = false;
+        }
     }
 
     if (vars.m_category == WaveformWidgetCategory::DeveloperOnly &&
             !CmdlineArgs::Instance().getDeveloper()) {
         active = false;
-        deactivateReasons << QStringLiteral("DeveloperOnly category but not in developer mode");
     }
 #ifdef MIXXX_USE_QOPENGL
     else if (vars.m_category == WaveformWidgetCategory::AllShader) {
@@ -1113,19 +1062,6 @@ void WaveformWidgetFactory::addHandle(
     } else if (vars.m_category == WaveformWidgetCategory::Legacy) {
         backend = WaveformWidgetBackend::GL;
     }
-
-    logWaveformDiag(QStringLiteral("addHandle: type=%1 category=%2 backend=%3 active=%4 useGL=%5 useGLES=%6 useGLSL=%7 glAvail=%8 glesAvail=%9 shaders=%10%11")
-                            .arg(static_cast<int>(type))
-                            .arg(static_cast<int>(vars.m_category))
-                            .arg(static_cast<int>(backend))
-                            .arg(active)
-                            .arg(vars.m_useGL)
-                            .arg(vars.m_useGLES)
-                            .arg(vars.m_useGLSL)
-                            .arg(isOpenGlAvailable())
-                            .arg(isOpenGlesAvailable())
-                            .arg(isOpenGlShaderAvailable())
-                            .arg(deactivateReasons.isEmpty() ? QString() : QString(" DEACTIVATE: ") + deactivateReasons.join("; ")));
 
     if (active) {
         if (collectedHandles.contains(type)) {
@@ -1157,12 +1093,6 @@ void WaveformWidgetFactory::evaluateWidgets() {
             WaveformRendererSignalBase::Options>
             supportedOptions;
     bool useGles = isOpenGlesAvailable(); // we can make use of GLES waveforms
-    logWaveformDiag(QStringLiteral("evaluateWidgets: useGles=%1 glAvail=%2 glesAvail=%3 shaders=%4 version=%5")
-                            .arg(useGles)
-                            .arg(isOpenGlAvailable())
-                            .arg(isOpenGlesAvailable())
-                            .arg(isOpenGlShaderAvailable())
-                            .arg(m_openGLVersion));
     for (WaveformWidgetType::Type type : WaveformWidgetType::kValues) {
         switch (type) {
         case WaveformWidgetType::Empty:

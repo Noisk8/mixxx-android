@@ -14,7 +14,7 @@ Mixxx.LibrarySourceTree {
 
             delegate: Rectangle {
                 color: decoration
-                implicitHeight: 30
+                implicitHeight: 38
 
                 Image {
                     anchors.fill: parent
@@ -135,7 +135,7 @@ Mixxx.LibrarySourceTree {
             label: qsTr("Key")
             preferredWidth: 70
 
-            delegate: DefaultDelegate {
+            delegate: KeyDelegate {
             }
         },
         Mixxx.TrackListColumn {
@@ -168,36 +168,18 @@ Mixxx.LibrarySourceTree {
 
         readonly property var caps: capabilities
 
-        // FIXME: https://bugreports.qt.io/browse/QTBUG-111789
-        Binding on Drag.active {
-            // This delays the update until the even queue is cleared
-            // preventing any potential oscillations causing a loop
-            delayed: true
-            value: dragArea.drag.active
-        }
-
         LibraryComponent.Track {
             id: dragArea
 
             anchors.fill: parent
             capabilities: cell.caps
 
-            drag.onGrabChanged: (transition, eventPoint) => {
-                if (transition != PointerDevice.GrabPassive && transition != PointerDevice.GrabExclusive) {
-                    return;
-                }
-                parent.dragImage.grabToImage(result => {
-                    parent.Drag.imageSource = result.url;
-                }, Qt.size(parent.dragImage.width, parent.dragImage.height));
-            }
             tap.onDoubleTapped: {
                 tableView.selectionModel.selectRow(row);
                 tableView.loadSelectedTrackIntoNextAvailableDeck(false);
             }
             tap.onTapped: (eventPoint, button) => {
-                if (button == Qt.LeftButton) {
-                    tableView.selectionModel.selectRow(row);
-                }
+                tableView.selectionModel.selectRow(row);
             }
         }
         Text {
@@ -210,6 +192,102 @@ Mixxx.LibrarySourceTree {
             font.pixelSize: 14
             text: display ?? ""
             verticalAlignment: Text.AlignVCenter
+        }
+    }
+
+    resources: [
+        Mixxx.ControlProxy {
+            id: deck1KeyProxy
+            group: "[Channel1]"
+            key: "visual_key"
+        },
+        Mixxx.ControlProxy {
+            id: deck2KeyProxy
+            group: "[Channel2]"
+            key: "visual_key"
+        }
+    ]
+
+    function checkCamelotCompatibility(trackKey) {
+        if (!trackKey || trackKey === "") return 0;
+        var d1 = (deck1KeyProxy.value || "").toString().trim().toUpperCase();
+        var d2 = (deck2KeyProxy.value || "").toString().trim().toUpperCase();
+        var tk = trackKey.toString().trim().toUpperCase();
+
+        function matchOne(deckKey, tKey) {
+            if (!deckKey || deckKey === "") return 0;
+            if (deckKey === tKey) return 2; // Perfect exact match
+
+            var m1 = deckKey.match(/^(\d{1,2})([AB])$/);
+            var m2 = tKey.match(/^(\d{1,2})([AB])$/);
+            if (m1 && m2) {
+                var num1 = parseInt(m1[1]);
+                var let1 = m1[2];
+                var num2 = parseInt(m2[1]);
+                var let2 = m2[2];
+
+                if (let1 === let2) {
+                    var diff = Math.abs(num1 - num2);
+                    if (diff === 1 || diff === 11) return 1; // Harmonic match (+/- 1 step)
+                }
+                if (num1 === num2 && let1 !== let2) return 1; // Relative major/minor
+            }
+            return 0;
+        }
+
+        var res1 = matchOne(d1, tk);
+        var res2 = matchOne(d2, tk);
+        return Math.max(res1, res2);
+    }
+
+    component KeyDelegate: LibraryComponent.Cell {
+        id: keyCell
+
+        readonly property var caps: capabilities
+        readonly property int compat: root.checkCamelotCompatibility(display)
+
+        LibraryComponent.Track {
+            id: keyDragArea
+            anchors.fill: parent
+            capabilities: keyCell.caps
+
+            tap.onDoubleTapped: {
+                tableView.selectionModel.selectRow(row);
+                tableView.loadSelectedTrackIntoNextAvailableDeck(false);
+            }
+            tap.onTapped: (eventPoint, button) => {
+                tableView.selectionModel.selectRow(row);
+            }
+        }
+
+        Rectangle {
+            anchors.centerIn: parent
+            width: Math.min(parent.width - 6, keyText.implicitWidth + (keyCell.compat === 2 ? 22 : 14))
+            height: 24
+            radius: 4
+            color: keyCell.compat === 2 ? "#00c85333" : (keyCell.compat === 1 ? "#00b0ff22" : "transparent")
+            border.color: keyCell.compat === 2 ? "#00e676" : (keyCell.compat === 1 ? "#00b0ff" : "transparent")
+            border.width: keyCell.compat > 0 ? 1 : 0
+
+            Row {
+                anchors.centerIn: parent
+                spacing: 3
+
+                Text {
+                    visible: keyCell.compat === 2
+                    text: "★"
+                    font.pixelSize: 10
+                    color: "#00e676"
+                }
+
+                Text {
+                    id: keyText
+                    font.bold: keyCell.compat > 0
+                    font.pixelSize: 12
+                    color: keyCell.compat === 2 ? "#00e676" : (keyCell.compat === 1 ? "#00e5ff" : Theme.textColor)
+                    text: display ?? ""
+                }
+            }
         }
     }
 }

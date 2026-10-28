@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Class-compliant USB MIDI DJ Controllers (Audio Class 1, Subclass 3 = MIDISTREAMING) -->
+    <usb-device class="1" subclass="3" />
+    <!-- Specific HID / Bulk DJ Controllers -->
+    @USB_DEVICE_ENTRIES@
+</resources>

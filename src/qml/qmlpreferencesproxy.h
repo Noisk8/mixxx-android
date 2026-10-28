@@ -354,6 +354,8 @@ class QmlControllerManagerProxy : public QObject {
         return m_knownMappings.value(type);
     }
 
+    Q_INVOKABLE void rescan();
+
     static QmlControllerManagerProxy* create(QQmlEngine* pQmlEngine, QJSEngine* pJsEngine);
     static void registerManager(std::shared_ptr<ControllerManager> pManager,
             bool controllerPreviewScreens = false) {

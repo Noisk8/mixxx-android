@@ -12,6 +12,8 @@ Item {
 
     implicitHeight: content.height + crossfader.height
     implicitWidth: 190
+    height: implicitHeight
+    width: implicitWidth
 
     Skin.SectionBackground {
         anchors.fill: parent

@@ -10,9 +10,10 @@ AbstractButton {
     property bool highlight: false
     property color normalColor: Theme.buttonNormalColor
     property color pressedColor: activeColor
+    property color backgroundColor: "#2B2B2B"
 
-    implicitHeight: 36
-    implicitWidth: 56
+    implicitHeight: 26
+    implicitWidth: Math.max(52, label.implicitWidth + 16)
 
     background: Item {
         anchors.fill: parent
@@ -21,7 +22,7 @@ AbstractButton {
             id: backgroundImage
 
             anchors.fill: parent
-            color: '#2B2B2B'
+            color: root.backgroundColor
             radius: 2
         }
         DropShadow {

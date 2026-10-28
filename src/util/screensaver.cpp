@@ -27,8 +27,9 @@ https://github.com/awjackson/bsnes-classic/blob/038e2e051ffc8abe7c56a3bf27e3016c
 #elif defined(Q_OS_IOS)
 #include "util/screensaverios.h"
 #elif defined(Q_OS_ANDROID)
-#include <android/api-level.h>
-#include <android/log.h>
+#include <QCoreApplication>
+#include <QJniObject>
+#include <QVariant>
 #define HAS_XWINDOW_SCREENSAVER 0
 #elif defined(_WIN32)
 #  include <windows.h>
@@ -353,17 +354,49 @@ void ScreenSaverHelper::uninhibitInternal() {
 }
 #elif defined(Q_OS_ANDROID)
 
-QJniObject ScreenSaverHelper::s_wakeLock = {};
+namespace {
+
+// FLAG_KEEP_SCREEN_ON is the supported way to keep the display awake; the
+// PowerManager screen wake locks are deprecated since API 17 and are ignored
+// on current Android versions. Window flags must be changed on the Android UI
+// thread, which is not the thread Qt runs main() on.
+void setKeepScreenOn(bool keepOn) {
+    QNativeInterface::QAndroidApplication::runOnAndroidMainThread(
+            [keepOn]() -> QVariant {
+                QJniObject activity =
+                        QNativeInterface::QAndroidApplication::context();
+                if (!activity.isValid()) {
+                    qWarning() << "ScreenSaverHelper: no activity";
+                    return {};
+                }
+                QJniObject window = activity.callObjectMethod(
+                        "getWindow", "()Landroid/view/Window;");
+                if (!window.isValid()) {
+                    qWarning() << "ScreenSaverHelper: no window";
+                    return {};
+                }
+                const jint kFlagKeepScreenOn = QJniObject::getStaticField<jint>(
+                        "android/view/WindowManager$LayoutParams",
+                        "FLAG_KEEP_SCREEN_ON");
+                if (keepOn) {
+                    window.callMethod<void>("addFlags", "(I)V", kFlagKeepScreenOn);
+                } else {
+                    window.callMethod<void>("clearFlags", "(I)V", kFlagKeepScreenOn);
+                }
+                return {};
+            });
+}
+
+} // anonymous namespace
+
 // Screensavers are not supported
 void ScreenSaverHelper::triggerUserActivity() {
 }
 void ScreenSaverHelper::inhibitInternal() {
-    QJniObject::callStaticMethod<void>("org/mixxx/MainActivity", "keepScreenOn", "(Z)V", true);
-    s_enabled = true;
+    setKeepScreenOn(true);
 }
 void ScreenSaverHelper::uninhibitInternal() {
-    QJniObject::callStaticMethod<void>("org/mixxx/MainActivity", "keepScreenOn", "(Z)V", false);
-    s_enabled = false;
+    setKeepScreenOn(false);
 }
 #else
 void ScreenSaverHelper::triggerUserActivity()

@@ -16,14 +16,20 @@ Item {
 
     property alias editDeck: editDeckButton.checked
     property var focusedDeck: null
-    property alias maximizeLibrary: maximizeLibraryButton.checked
+    property int viewMode: 1
+    property bool maximizeLibrary: viewMode === 2
     readonly property int numDecks: 4
     readonly property int numPreviewDecks: 1
     readonly property int numSamplers: 16
     readonly property int waveformOverviewTypeRgb: 2
     readonly property bool show4decks: show4DecksButton.checked && show4DecksButton.visible
-    property alias showEffects: showEffectsButton.checked
-    property alias showSamplers: showSamplersButton.checked
+    property bool showEffects: false
+    property bool showSamplers: false
+
+    function openQuickLoad(group) {
+        quickLoadDrawer.targetDeck = (group && group.length > 0) ? group : "[Channel1]";
+        quickLoadDrawer.open();
+    }
 
     Loader {
         id: nativeApplicationMenuLoader
@@ -92,10 +98,52 @@ Item {
             value = root.waveformOverviewTypeRgb;
         }
     }
+    Mixxx.ControlProxy {
+        id: headSplitControl
+        group: "[Master]"
+        key: "headSplit"
+    }
+    Mixxx.ControlProxy {
+        id: recordingStatusControl
+        group: "[Recording]"
+        key: "status"
+        onValueChanged: {
+            if (value > 0) {
+                recBlinkTimer.recSeconds = 0;
+                recBlinkTimer.start();
+            } else {
+                recBlinkTimer.stop();
+            }
+        }
+    }
+    Mixxx.ControlProxy {
+        id: recordingToggleControl
+        group: "[Recording]"
+        key: "toggle_recording"
+    }
+    Timer {
+        id: recBlinkTimer
+        interval: 500
+        repeat: true
+        property bool blink: false
+        property int recSeconds: 0
+        property string recTimeStr: "00:00"
+
+        onTriggered: {
+            blink = !blink;
+            if (blink) {
+                recSeconds++;
+                var m = Math.floor(recSeconds / 60);
+                var s = recSeconds % 60;
+                recTimeStr = (m < 10 ? "0" : "") + m + ":" + (s < 10 ? "0" : "") + s;
+            }
+        }
+    }
     Column {
         id: content
 
         anchors.fill: parent
+        enabled: !quickLoadDrawer.opened && !settingsPopup.opened
 
         move: Transition {
             NumberAnimation {
@@ -111,114 +159,264 @@ Item {
             height: 36
             radius: 1
             width: parent.width
+            z: 20
 
-            RowLayout {
-                anchors.fill: parent
+            Text {
+                id: logoText
+                anchors.left: parent.left
+                anchors.leftMargin: 10
+                anchors.verticalCenter: parent.verticalCenter
+                color: Theme.accentColor
+                font.bold: true
+                font.pixelSize: 14
+                font.letterSpacing: 1.5
+                text: "MIXXX"
+            }
 
-                Skin.Button {
-                    id: show4DecksButton
+            Skin.Button {
+                id: showPreferencesButton
+                anchors.right: parent.right
+                anchors.rightMargin: 6
+                anchors.verticalCenter: parent.verticalCenter
+                height: 30
+                width: 36
+                activeColor: Theme.accentColor
+                checked: settingsPopup.opened
+                icon.height: 18
+                icon.source: "images/gear.svg"
+                icon.width: 18
 
-                    activeColor: Theme.white
-                    checkable: true
-                    text: "4 Decks"
-                    visible: root.height > 515
-                }
-                Skin.Button {
-                    id: maximizeLibraryButton
-
-                    activeColor: Theme.white
-                    checkable: true
-                    text: "Library"
-
-                    onCheckedChanged: () => {
-                        showMaximizedLibrary.value = this.checked;
+                onClicked: {
+                    if (!settingsPopup.opened) {
+                        settingsPopup.open();
                     }
+                }
+                onPressAndHold: {
+                    Mixxx.PreferencesDialog.show();
+                }
+            }
 
-                    Mixxx.ControlProxy {
-                        id: showMaximizedLibrary
+            Flickable {
+                id: toolbarFlickable
+                anchors.left: logoText.right
+                anchors.leftMargin: 8
+                anchors.right: showPreferencesButton.left
+                anchors.rightMargin: 8
+                anchors.top: parent.top
+                anchors.bottom: parent.bottom
+                contentWidth: toolbarRow.implicitWidth
+                flickableDirection: Flickable.HorizontalFlick
+                boundsBehavior: Flickable.StopAtBounds
+                clip: true
 
-                        group: "[Skin]"
-                        key: "show_maximized_library"
+                RowLayout {
+                    id: toolbarRow
+                    anchors.verticalCenter: parent.verticalCenter
+                    height: parent.height
+                    spacing: 4
 
-                        onValueChanged: () => {
-                            maximizeLibraryButton.checked = this.value;
+                    Rectangle {
+                        Layout.preferredHeight: 30
+                        Layout.preferredWidth: 236
+                        color: "#181a20"
+                        radius: 4
+                        border.color: "#2a2e39"
+                        border.width: 1
+
+                        RowLayout {
+                            anchors.fill: parent
+                            anchors.margins: 2
+                            spacing: 2
+
+                            Skin.Button {
+                                Layout.fillHeight: true
+                                Layout.fillWidth: true
+                                activeColor: Theme.accentColor
+                                backgroundColor: root.viewMode === 1 ? Theme.accentColor : "transparent"
+                                normalColor: root.viewMode === 1 ? "#ffffff" : "#90a4ae"
+                                text: "DJ"
+                                font.bold: true
+                                font.pixelSize: 10
+                                onClicked: root.viewMode = 1
+                            }
+
+                            Skin.Button {
+                                Layout.fillHeight: true
+                                Layout.fillWidth: true
+                                activeColor: Theme.accentColor
+                                backgroundColor: root.viewMode === 3 ? Theme.accentColor : "transparent"
+                                normalColor: root.viewMode === 3 ? "#ffffff" : "#90a4ae"
+                                text: "WAVE"
+                                font.bold: true
+                                font.pixelSize: 10
+                                onClicked: root.viewMode = 3
+                            }
+
+                            Skin.Button {
+                                Layout.fillHeight: true
+                                Layout.fillWidth: true
+                                activeColor: Theme.accentColor
+                                backgroundColor: root.viewMode === 2 ? Theme.accentColor : "transparent"
+                                normalColor: root.viewMode === 2 ? "#ffffff" : "#90a4ae"
+                                text: "LIB"
+                                font.bold: true
+                                font.pixelSize: 10
+                                onClicked: root.viewMode = 2
+                            }
+
+                            Skin.Button {
+                                Layout.fillHeight: true
+                                Layout.fillWidth: true
+                                activeColor: Theme.accentColor
+                                backgroundColor: root.viewMode === 0 ? Theme.accentColor : "transparent"
+                                normalColor: root.viewMode === 0 ? "#ffffff" : "#90a4ae"
+                                text: "CTL"
+                                font.bold: true
+                                font.pixelSize: 10
+                                onClicked: root.viewMode = 0
+                            }
                         }
                     }
-                }
-                Skin.Button {
-                    id: showEffectsButton
 
-                    activeColor: Theme.white
-                    checkable: true
-                    text: "Effects"
-                }
-                Skin.Button {
-                    id: showAuxButton
-
-                    activeColor: Theme.white
-                    checkable: true
-                    text: "Aux"
-                }
-                Skin.Button {
-                    id: showSamplersButton
-
-                    activeColor: Theme.white
-                    checkable: true
-                    text: "Sampler"
-                }
-                Item {
-                    Layout.fillWidth: true
-                }
-                Skin.Button {
-                    id: editDeckButton
-
-                    activeColor: Theme.white
-                    checkable: true
-                    text: "Edit"
-                }
-                Skin.Button {
-                    id: showDevToolsButton
-
-                    activeColor: Theme.white
-                    checkable: true
-                    checked: devToolsWindow.visible
-                    text: "Develop"
-
-                    onClicked: {
-                        if (devToolsWindow.visible)
-                            devToolsWindow.close();
-                        else
-                            devToolsWindow.show();
+                    Skin.Button {
+                        id: quickLoadD1Button
+                        Layout.preferredHeight: 30
+                        Layout.preferredWidth: 62
+                        activeColor: "#64b5f6"
+                        backgroundColor: "#1565c0"
+                        normalColor: "#ffffff"
+                        font.bold: true
+                        font.pixelSize: 10
+                        text: "LOAD 1"
+                        onClicked: root.openQuickLoad("[Channel1]")
                     }
 
-                    DeveloperToolsWindow {
-                        id: devToolsWindow
-
-                        height: 480
-                        width: 640
+                    Skin.Button {
+                        id: quickLoadD2Button
+                        Layout.preferredHeight: 30
+                        Layout.preferredWidth: 62
+                        activeColor: "#ffb74d"
+                        backgroundColor: "#e65100"
+                        normalColor: "#ffffff"
+                        font.bold: true
+                        font.pixelSize: 10
+                        text: "LOAD 2"
+                        onClicked: root.openQuickLoad("[Channel2]")
                     }
-                }
-                Skin.Button {
-                    id: showPreferencesButton
 
-                    activeColor: Theme.white
-                    checked: settingsPopup.opened
-                    icon.height: 16
-                    icon.source: "images/gear.svg"
-                    icon.width: 16
-                    implicitWidth: implicitHeight
-
-                    onClicked: {
-                        Mixxx.PreferencesDialog.show();
+                    Skin.Button {
+                        id: showEffectsButton
+                        Layout.preferredHeight: 30
+                        Layout.preferredWidth: 42
+                        activeColor: "#e040fb"
+                        backgroundColor: root.showEffects ? "#4a148c" : "#222733"
+                        normalColor: root.showEffects ? "#ea80fc" : "#b0bec5"
+                        checkable: true
+                        checked: root.showEffects
+                        text: "FX"
+                        font.bold: true
+                        font.pixelSize: 10
+                        onClicked: root.showEffects = !root.showEffects
                     }
-                    onPressAndHold: {
-                        if (!settingsPopup.opened) {
-                            settingsPopup.open();
+
+                    Skin.Button {
+                        id: xyPadButton
+                        Layout.preferredHeight: 30
+                        Layout.preferredWidth: 54
+                        activeColor: "#00e5ff"
+                        backgroundColor: xyPadOverlay.visible ? "#006064" : "#222733"
+                        normalColor: xyPadOverlay.visible ? "#00e5ff" : "#b0bec5"
+                        checkable: true
+                        checked: xyPadOverlay.visible
+                        text: "XY"
+                        font.bold: true
+                        font.pixelSize: 10
+                        onClicked: xyPadOverlay.visible = !xyPadOverlay.visible
+                    }
+
+                    Skin.Button {
+                        id: splitCueButton
+                        Layout.preferredHeight: 30
+                        Layout.preferredWidth: 52
+                        activeColor: "#ff9100"
+                        backgroundColor: headSplitControl.value > 0 ? "#e65100" : "#222733"
+                        normalColor: headSplitControl.value > 0 ? "#ffffff" : "#b0bec5"
+                        checkable: true
+                        checked: headSplitControl.value > 0
+                        text: "SPLIT"
+                        font.bold: true
+                        font.pixelSize: 10
+                        onClicked: {
+                            headSplitControl.value = (headSplitControl.value > 0) ? 0 : 1;
                         }
+                    }
+
+                    Rectangle {
+                        id: recButton
+                        Layout.preferredHeight: 30
+                        Layout.preferredWidth: recordingStatusControl.value > 0 ? 76 : 50
+                        radius: 4
+                        color: recordingStatusControl.value > 0 ? "#b71c1c" : (recMouse.pressed ? "#2e2124" : "#222733")
+                        border.color: recordingStatusControl.value > 0 ? "#ff5252" : "#374151"
+                        border.width: 1
+
+                        RowLayout {
+                            anchors.centerIn: parent
+                            spacing: 4
+
+                            Rectangle {
+                                width: 8
+                                height: 8
+                                radius: 4
+                                color: recordingStatusControl.value > 0 ? (recBlinkTimer.blink ? "#ff1744" : "#ff8a80") : "#78909c"
+                            }
+
+                            Text {
+                                text: recordingStatusControl.value > 0 ? recBlinkTimer.recTimeStr : "REC"
+                                font.bold: true
+                                font.pixelSize: 10
+                                color: recordingStatusControl.value > 0 ? "#ffffff" : "#b0bec5"
+                            }
+                        }
+
+                        MouseArea {
+                            id: recMouse
+                            anchors.fill: parent
+                            onClicked: {
+                                recordingToggleControl.trigger();
+                            }
+                        }
+                    }
+
+                    Skin.Button {
+                        id: editDeckButton
+                        Layout.preferredHeight: 30
+                        Layout.preferredWidth: 42
+                        activeColor: Theme.white
+                        checkable: true
+                        text: "Edit"
+                        visible: !root.applicationWindow.isMobile
+                    }
+
+                    Skin.Button {
+                        id: show4DecksButton
+                        Layout.preferredHeight: 30
+                        Layout.preferredWidth: 42
+                        activeColor: Theme.white
+                        checkable: true
+                        text: "4D"
+                        visible: root.height > 515
                     }
                 }
             }
         }
+
+        Skin.EffectRow {
+            id: effects
+            visible: root.showEffects
+            width: parent.width
+        }
+
         SplitView {
             id: splitView
 
@@ -262,9 +460,17 @@ Item {
             Item {
                 id: waveforms
 
-                SplitView.fillHeight: !library.active
-                SplitView.preferredHeight: library.active ? 120 : undefined
-                visible: !root.maximizeLibrary
+                readonly property real waveDeckBarHeight: root.viewMode === 3 ? Math.min(115, Math.max(86, Math.round(parent.height * 0.38))) : 0
+                readonly property real scrollingHeight: Math.max(0, height - waveDeckBarHeight)
+
+                SplitView.fillHeight: root.viewMode === 3
+                SplitView.preferredHeight: {
+                    if (root.viewMode === 3) return splitView.height;
+                    if (root.viewMode === 0) return Math.round(splitView.height * 0.42);
+                    if (root.viewMode === 2 || root.maximizeLibrary) return 0;
+                    return Math.max(80, Math.min(130, Math.round(splitView.height * 0.32)));
+                }
+                visible: root.viewMode !== 2 && !root.maximizeLibrary
 
                 FadeBehavior on visible {
                     fadeTarget: waveforms
@@ -277,12 +483,13 @@ Item {
 
                     active: root.show4decks
                     anchors.top: parent.top
-                    height: parent.height / 4
+                    height: waveforms.scrollingHeight / 4
                     width: root.width
 
                     sourceComponent: Component {
                         Skin.WaveformDisplay {
                             group: deck3waveform.group
+                            isTouchMode: root.viewMode === 1
 
                             FadeBehavior on visible {
                                 fadeTarget: deck3waveform
@@ -295,15 +502,17 @@ Item {
 
                     anchors.top: root.show4decks ? deck3waveform.bottom : parent.top
                     group: "[Channel1]"
-                    height: parent.height / (root.show4decks ? 4 : 2)
+                    height: waveforms.scrollingHeight / (root.show4decks ? 4 : 2)
+                    isTouchMode: root.viewMode === 1
                     width: root.width
                 }
                 Skin.WaveformDisplay {
                     id: deck2waveform
 
-                    anchors.bottom: root.show4decks ? deck4waveform.top : parent.bottom
+                    anchors.top: deck1waveform.bottom
                     group: "[Channel2]"
-                    height: parent.height / (root.show4decks ? 4 : 2)
+                    height: waveforms.scrollingHeight / (root.show4decks ? 4 : 2)
+                    isTouchMode: root.viewMode === 1
                     width: root.width
                 }
                 Loader {
@@ -312,13 +521,14 @@ Item {
                     readonly property string group: "[Channel4]"
 
                     active: root.show4decks
-                    anchors.bottom: parent.bottom
-                    height: parent.height / 4
+                    anchors.top: deck2waveform.bottom
+                    height: waveforms.scrollingHeight / 4
                     width: root.width
 
                     sourceComponent: Component {
                         Skin.WaveformDisplay {
                             group: deck4waveform.group
+                            isTouchMode: root.viewMode === 1
 
                             FadeBehavior on visible {
                                 fadeTarget: deck4waveform
@@ -326,63 +536,32 @@ Item {
                         }
                     }
                 }
-                Rectangle {
-                    width: 125
 
-                    gradient: Gradient {
-                        orientation: Gradient.Horizontal
-
-                        GradientStop {
-                            color: Theme.darkGray
-                            position: 0
-                        }
-                        GradientStop {
-                            color: 'transparent'
-                            position: 1
-                        }
-                    }
-
-                    anchors {
-                        bottom: parent.bottom
-                        left: parent.left
-                        top: parent.top
-                    }
-                }
-                Rectangle {
-                    width: 125
-
-                    gradient: Gradient {
-                        orientation: Gradient.Horizontal
-
-                        GradientStop {
-                            color: 'transparent'
-                            position: 0
-                        }
-                        GradientStop {
-                            color: Theme.darkGray
-                            position: 1
-                        }
-                    }
-
-                    anchors {
-                        bottom: parent.bottom
-                        right: parent.right
-                        top: parent.top
-                    }
+                WaveDeckBar {
+                    id: waveDeckBar
+                    anchors.bottom: parent.bottom
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    height: waveforms.waveDeckBarHeight
+                    visible: root.viewMode === 3
+                    z: 10
                 }
             }
             Item {
-                SplitView.fillHeight: library.active
-                SplitView.maximumHeight: library.active ? undefined : mixer.height
-                SplitView.minimumHeight: mixer.height
+                id: lowerSection
+
+                SplitView.fillHeight: root.viewMode !== 3
+                SplitView.minimumHeight: (root.viewMode === 1 && !root.maximizeLibrary) ? mixer.height : 60
+                visible: root.viewMode !== 3
 
                 Deck {
                     id: deck1
 
                     editMode: root.editDeck
                     group: "[Channel1]"
-                    height: root.maximizeLibrary ? 80 : root.show4decks ? mixer.height / 2 : mixer.height
-                    minimized: root.maximizeLibrary
+                    height: (root.viewMode === 2 || root.maximizeLibrary) ? 70 : root.show4decks ? mixer.height / 2 : mixer.height
+                    minimized: root.viewMode === 2 || root.maximizeLibrary
+                    visible: root.viewMode === 1 || root.viewMode === 2
 
                     Behavior on height {
                         SpringAnimation {
@@ -420,8 +599,10 @@ Item {
                     anchors.horizontalCenter: parent.horizontalCenter
                     anchors.top: parent.top
                     groups: [deck1.group, deck2.group, deck3.group, deck4.group]
+                    height: implicitHeight
                     show4decks: root.show4decks
-                    visible: !root.maximizeLibrary
+                    visible: root.viewMode === 1 && !root.maximizeLibrary
+                    width: implicitWidth
 
                     Behavior on height {
                         SpringAnimation {
@@ -434,47 +615,15 @@ Item {
                     }
                     states: [
                         State {
-                            when: root.focusedDeck === deck1 && root.width < 1400 && !root.maximizeLibrary
-
-                            AnchorChanges {
-                                anchors.horizontalCenter: parent.right
-                                target: mixer
-                            }
-                            PropertyChanges {
-                                target: deck1
-                                width: root.width - (mixer.width / 2)
-                            }
-                        },
-                        State {
-                            when: root.focusedDeck === deck2 && root.width < 1400 && !root.maximizeLibrary
-
-                            AnchorChanges {
-                                anchors.horizontalCenter: parent.left
-                                target: mixer
-                            }
-                            PropertyChanges {
-                                target: deck2
-                                width: root.width - (mixer.width / 2)
-                            }
-                        },
-                        State {
                             when: (!root.focusedDeck || root.width > 1400) && !root.maximizeLibrary
 
                             AnchorChanges {
                                 anchors.horizontalCenter: parent.horizontalCenter
                                 target: mixer
                             }
-                            PropertyChanges {
-                                target: deck1
-                                width: (root.width - mixer.width) / 2
-                            }
-                            PropertyChanges {
-                                target: deck2
-                                width: (root.width - mixer.width) / 2
-                            }
                         },
                         State {
-                            when: root.maximizeLibrary
+                            when: root.maximizeLibrary || root.viewMode === 2
 
                             AnchorChanges {
                                 anchors.horizontalCenter: parent.horizontalCenter
@@ -504,8 +653,9 @@ Item {
 
                     editMode: root.editDeck
                     group: "[Channel2]"
-                    height: root.maximizeLibrary ? 80 : root.show4decks ? mixer.height / 2 : mixer.height
-                    minimized: root.maximizeLibrary
+                    height: (root.viewMode === 2 || root.maximizeLibrary) ? 70 : root.show4decks ? mixer.height / 2 : mixer.height
+                    minimized: root.viewMode === 2 || root.maximizeLibrary
+                    visible: root.viewMode === 1 || root.viewMode === 2
 
                     Behavior on height {
                         SpringAnimation {
@@ -633,19 +783,11 @@ Item {
                 //         fadeTarget: samplers
                 //     }
                 // }
-                // Skin.EffectRow {
-                //     id: effects
-                //     visible: root.showEffects
-                //     width: parent.width
-
-                //     Skin.FadeBehavior on visible {
-                //         fadeTarget: effects
-                //     }
-                // }
                 Loader {
                     id: library
 
-                    active: root.maximizeLibrary || root.height - mixer.height >= 400
+                    active: root.viewMode === 0 || root.viewMode === 2 || root.maximizeLibrary || root.height - mixer.height >= 400
+                    visible: root.viewMode === 0 || root.viewMode === 2 || root.maximizeLibrary || (root.viewMode === 1 && root.height - mixer.height >= 400)
                     width: parent.width
 
                     sourceComponent: Component {
@@ -655,23 +797,59 @@ Item {
                     }
                     states: [
                         State {
-                            when: root.maximizeLibrary && root.show4decks
+                            when: root.viewMode === 0
 
                             AnchorChanges {
+                                anchors.bottom: parent.bottom
+                                anchors.top: parent.top
+                                target: library
+                            }
+                            PropertyChanges {
+                                target: library
+                                visible: true
+                            }
+                        },
+                        State {
+                            when: (root.maximizeLibrary || root.viewMode === 2) && root.show4decks
+
+                            AnchorChanges {
+                                anchors.bottom: parent.bottom
                                 anchors.top: deck4.bottom
                                 target: library
                             }
-                        },
-                        State {
-                            when: root.maximizeLibrary && !root.show4decks
-
-                            AnchorChanges {
-                                anchors.top: deck1.bottom
+                            PropertyChanges {
                                 target: library
+                                visible: true
                             }
                         },
                         State {
-                            when: !root.maximizeLibrary && root.height - mixer.height < 400
+                            when: (root.maximizeLibrary || root.viewMode === 2) && !root.show4decks
+
+                            AnchorChanges {
+                                anchors.bottom: parent.bottom
+                                anchors.top: deck1.bottom
+                                target: library
+                            }
+                            PropertyChanges {
+                                target: library
+                                visible: true
+                            }
+                        },
+                        State {
+                            when: root.viewMode === 1 && root.height - mixer.height >= 400
+
+                            AnchorChanges {
+                                anchors.bottom: parent.bottom
+                                anchors.top: mixer.bottom
+                                target: library
+                            }
+                            PropertyChanges {
+                                target: library
+                                visible: true
+                            }
+                        },
+                        State {
+                            when: root.viewMode === 1 && root.height - mixer.height < 400
 
                             PropertyChanges {
                                 target: library
@@ -681,8 +859,10 @@ Item {
                     ]
 
                     anchors {
+                        left: parent.left
+                        right: parent.right
                         bottom: parent.bottom
-                        top: mixer.bottom
+                        top: root.viewMode === 0 ? parent.top : mixer.bottom
                     }
                 }
             }
@@ -691,11 +871,11 @@ Item {
     Skin.Settings {
         id: settingsPopup
 
-        height: Math.min(840, parent.height)
+        height: root.applicationWindow.isMobile ? parent.height : Math.min(840, parent.height)
         modal: true
-        width: Math.min(1400, parent.width)
-        x: Math.round((parent.width - width) / 2)
-        y: Math.round((parent.height - height) / 2)
+        width: root.applicationWindow.isMobile ? parent.width : Math.min(1400, parent.width)
+        x: root.applicationWindow.isMobile ? 0 : Math.round((parent.width - width) / 2)
+        y: root.applicationWindow.isMobile ? 0 : Math.round((parent.height - height) / 2)
 
         Overlay.modal: Rectangle {
             id: overlayModal
@@ -718,5 +898,24 @@ Item {
                 }
             }
         }
+    }
+
+    Skin.QuickLoadDrawer {
+        id: quickLoadDrawer
+
+        height: root.applicationWindow.isMobile ? parent.height : Math.min(840, parent.height)
+        width: root.applicationWindow.isMobile ? parent.width : Math.min(1400, parent.width)
+        x: root.applicationWindow.isMobile ? 0 : Math.round((parent.width - width) / 2)
+        y: root.applicationWindow.isMobile ? 0 : Math.round((parent.height - height) / 2)
+    }
+
+    Skin.XYPad {
+        id: xyPadOverlay
+        visible: false
+        z: 90
+        anchors.centerIn: parent
+        width: Math.min(680, parent.width - 24)
+        height: Math.min(380, parent.height - 50)
+        onCloseRequested: visible = false
     }
 }

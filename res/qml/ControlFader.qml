@@ -20,12 +20,29 @@ Skin.Fader {
         group: root.group
         key: root.key
     }
-    TapHandler {
-        onDoubleTapped: control.reset()
-    }
-    TapHandler {
-        acceptedButtons: Qt.RightButton
 
-        onTapped: control.reset()
+    // Touch-optimized direct dragging and tapping for mobile screens
+    MouseArea {
+        id: touchArea
+        anchors.fill: parent
+        preventStealing: true
+
+        function updateFromTouch(mouse) {
+            var pos = 0.5;
+            if (root.vertical) {
+                pos = 1.0 - Math.max(0.0, Math.min(1.0, mouse.y / height));
+            } else {
+                pos = Math.max(0.0, Math.min(1.0, mouse.x / width));
+            }
+            control.parameter = pos;
+        }
+
+        onPressed: mouse => updateFromTouch(mouse)
+        onPositionChanged: mouse => {
+            if (pressed) {
+                updateFromTouch(mouse);
+            }
+        }
+        onDoubleClicked: control.reset()
     }
 }

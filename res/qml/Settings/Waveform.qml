@@ -37,10 +37,12 @@ Category {
     function load() {
         overviewTypeInput.currentIndex = Math.max(0, Math.min(2, Mixxx.Config.waveformOverviewType));
         overviewStereoInput.selected = Mixxx.Config.waveformOverviewStereo ? "on" : "off";
-        overviewMinuteMarkersInput.selected = Mixxx.Config.waveformOverviewMinuteMarkers ? "on" : "off";
         overviewScalingInput.selected = Mixxx.Config.waveformOverviewNormalized ? "normalize" : "global gain";
         waveformEnabledInput.selected = Mixxx.Config.waveformEnabled ? "on" : "off";
         frameRateInput.value = Mixxx.Config.waveformFrameRate;
+        if (frameRateInput.value <= 60) frameRateRatio.selected = "60 fps";
+        else if (frameRateInput.value <= 90) frameRateRatio.selected = "90 fps";
+        else frameRateRatio.selected = "120 fps ★";
         waveformTypeInput.currentIndex = root.waveformTypes.indexOf(Mixxx.Config.waveformType);
         if (waveformTypeInput.currentIndex < 0)
             waveformTypeInput.currentIndex = 3;
@@ -145,20 +147,20 @@ Category {
     }
 
     ScrollView {
+        id: scrollView
+
         anchors.bottom: buttonActions.top
-        anchors.bottomMargin: 18
+        anchors.bottomMargin: 8
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.top: parent.top
         clip: true
+        contentWidth: availableWidth
 
         ColumnLayout {
             id: content
 
-            anchors.left: parent.left
-            anchors.margins: 14
-            anchors.right: parent.right
-            anchors.top: parent.top
+            width: scrollView.availableWidth
             spacing: 10
 
             Text {
@@ -270,6 +272,22 @@ Category {
                     options: ["on", "off"]
 
                     onSelectedChanged: root.markDirty()
+                }
+            }
+            RowLayout {
+                Layout.fillWidth: true
+                WaveformSettingParameter {
+                    label: qsTr("Fluidez de Ondas (FPS)")
+                }
+                RatioChoice {
+                    id: frameRateRatio
+                    options: ["60 fps", "90 fps", "120 fps ★"]
+                    onSelectedChanged: {
+                        if (selected === "60 fps") frameRateInput.value = 60;
+                        else if (selected === "90 fps") frameRateInput.value = 90;
+                        else frameRateInput.value = 120;
+                        root.markDirty();
+                    }
                 }
             }
             WaveformSliderRow {
@@ -615,58 +633,163 @@ Category {
             }
         }
     }
-    Item {
+    // ================= BARRA INFERIOR FIJA: ACCIONES Y ESTADO =================
+    Rectangle {
         id: buttonActions
-
         anchors.bottom: parent.bottom
         anchors.left: parent.left
         anchors.right: parent.right
-        height: 20
+        height: 58
+        color: "#181b24"
+        border.color: "#282d3c"
+        border.width: 1
+        radius: 8
 
-        Setting.FormButton {
-            activeColor: "#999999"
-            anchors.left: parent.left
-            backgroundColor: "#7D3B3B"
-            opacity: enabled ? 1.0 : 0.5
-            text: "Reset"
+        RowLayout {
+            anchors.fill: parent
+            anchors.margins: 10
+            spacing: 12
 
-            onPressed: {
-                root.reset();
-            }
-        }
-        Row {
-            anchors.right: parent.right
-            spacing: 10
+            // Status indicator pill
+            Rectangle {
+                Layout.preferredHeight: 34
+                Layout.preferredWidth: statusRow.implicitWidth + 24
+                radius: 17
+                color: root.dirty ? "#332200" : "#0d2b1a"
+                border.color: root.dirty ? "#ffb300" : "#00c853"
+                border.width: 1
 
-            Text {
-                id: errorMessage
-
-                Layout.alignment: Qt.AlignVCenter
-                Layout.rightMargin: 16
-                color: "#7D3B3B"
-                text: ""
-            }
-            Setting.FormButton {
-                activeColor: "#999999"
-                backgroundColor: "#3F3F3F"
-                opacity: enabled ? 1.0 : 0.5
-                text: "Cancel"
-                visible: root.dirty
-
-                onPressed: {
-                    root.load();
+                RowLayout {
+                    id: statusRow
+                    anchors.centerIn: parent
+                    spacing: 8
+                    Text {
+                        text: root.dirty ? "●" : "✓"
+                        font.bold: true
+                        font.pixelSize: 13
+                        color: root.dirty ? "#ffb300" : "#00e676"
+                    }
+                    Text {
+                        text: root.dirty ? qsTr("Cambios pendientes") : qsTr("Ondas guardadas")
+                        font.bold: true
+                        font.pixelSize: 12
+                        color: root.dirty ? "#ffe082" : "#b9f6ca"
+                    }
                 }
             }
-            Setting.FormButton {
-                activeColor: "#999999"
-                backgroundColor: root.dirty ? "#3a60be" : "#3F3F3F"
-                enabled: root.dirty
-                opacity: enabled ? 1.0 : 0.5
-                text: "Save"
 
-                onPressed: {
-                    errorMessage.text = "";
-                    root.save();
+            // Error message if any
+            Text {
+                id: errorMessage
+                Layout.alignment: Qt.AlignVCenter
+                visible: text.length > 0
+                color: "#ff5252"
+                font.pixelSize: 12
+                text: ""
+            }
+
+            Item { Layout.fillWidth: true }
+
+            // Botón Restablecer valores
+            Rectangle {
+                Layout.preferredHeight: 38
+                Layout.preferredWidth: 140
+                radius: 6
+                color: resetMouse.pressed ? "#5c2b2b" : (resetMouse.containsMouse ? "#4a2222" : "#371e1e")
+                border.color: "#772b2b"
+                border.width: 1
+
+                RowLayout {
+                    anchors.centerIn: parent
+                    spacing: 6
+                    Text { text: "↺"; color: "#ff8a80"; font.pixelSize: 14 }
+                    Text {
+                        text: qsTr("Restablecer")
+                        font.bold: true
+                        font.pixelSize: 12
+                        color: "#ffcdd2"
+                    }
+                }
+
+                MouseArea {
+                    id: resetMouse
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: {
+                        root.reset();
+                    }
+                }
+            }
+
+            // Botón Descartar
+            Rectangle {
+                Layout.preferredHeight: 38
+                Layout.preferredWidth: 110
+                radius: 6
+                visible: root.dirty
+                color: discardMouse.pressed ? "#424242" : (discardMouse.containsMouse ? "#333333" : "#262626")
+                border.color: "#555555"
+                border.width: 1
+
+                Text {
+                    anchors.centerIn: parent
+                    text: qsTr("Descartar")
+                    font.bold: true
+                    font.pixelSize: 13
+                    color: "#e0e0e0"
+                }
+
+                MouseArea {
+                    id: discardMouse
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: {
+                        root.load();
+                        errorMessage.text = "";
+                    }
+                }
+            }
+
+            // Botón Guardar Formas de Onda
+            Rectangle {
+                Layout.preferredHeight: 40
+                Layout.preferredWidth: 230
+                radius: 6
+                color: root.dirty
+                       ? (saveMouse.pressed ? "#009624" : (saveMouse.containsMouse ? "#00e676" : "#00c853"))
+                       : (saveMouse.pressed ? "#0d47a1" : (saveMouse.containsMouse ? "#1e88e5" : "#1976d2"))
+                border.color: root.dirty ? "#69f0ae" : "#64b5f6"
+                border.width: 1.5
+
+                RowLayout {
+                    anchors.centerIn: parent
+                    spacing: 8
+
+                    Text {
+                        text: root.dirty ? "💾" : "✓"
+                        font.pixelSize: 14
+                        color: "#ffffff"
+                    }
+
+                    Text {
+                        text: root.dirty ? qsTr("Guardar Formas de Onda") : qsTr("Guardado")
+                        font.bold: true
+                        font.pixelSize: 13
+                        color: "#ffffff"
+                    }
+                }
+
+                MouseArea {
+                    id: saveMouse
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: {
+                        errorMessage.text = "";
+                        root.save();
+                    }
                 }
             }
         }

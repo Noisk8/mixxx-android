@@ -197,7 +197,7 @@ Rectangle {
             return oldDynamicColumnCount != dynamicColumnCount || oldUsedWidth != usedWidth;
         }
 
-        anchors.bottom: parent.bottom
+        anchors.bottom: quickLoadBar.top
         anchors.left: parent.left
         anchors.margins: 5
         anchors.right: parent.right
@@ -217,13 +217,31 @@ Rectangle {
             const span = columnDef.fillSpan || 1;
             return span * (view.width - view.usedWidth) / view.dynamicColumnCount;
         }
+        flickableDirection: Flickable.VerticalFlick
+        boundsBehavior: Flickable.StopAtBounds
+        interactive: true
         keyNavigationEnabled: false
         model: root.model
         pointerNavigationEnabled: false
         reuseItems: true
 
         ScrollBar.vertical: ScrollBar {
+            id: verticalScrollBar
             policy: ScrollBar.AlwaysOn
+            width: 16
+            interactive: true
+            contentItem: Rectangle {
+                implicitWidth: 12
+                implicitHeight: 48
+                radius: 6
+                color: verticalScrollBar.pressed ? "#00e5ff" : (verticalScrollBar.hovered ? "#78909c" : "#546e7a")
+            }
+            background: Rectangle {
+                implicitWidth: 16
+                color: "#181a20"
+                opacity: 0.7
+                radius: 4
+            }
         }
         delegate: Item {
             id: item
@@ -236,7 +254,7 @@ Rectangle {
             required property bool selected
             required property var track
 
-            implicitHeight: 30
+            implicitHeight: 38
 
             Loader {
                 id: loader
@@ -304,6 +322,89 @@ Rectangle {
             if (view.updateColumnSize()) {
                 // forceLayout is costly - only invoke if there was a change in the column layouts
                 view.forceLayout();
+            }
+        }
+    }
+    Rectangle {
+        id: quickLoadBar
+
+        anchors.bottom: parent.bottom
+        anchors.left: parent.left
+        anchors.right: parent.right
+        color: Theme.sunkenBackgroundColor
+        height: 48
+        border.color: Theme.panelSplitterBackground
+        border.width: 1
+
+        readonly property var selectedUrls: view.selectionModel.selectedTrackUrls()
+        readonly property bool hasTrack: selectedUrls && selectedUrls.length > 0
+
+        RowLayout {
+            anchors.fill: parent
+            anchors.margins: 5
+            spacing: 8
+
+            Rectangle {
+                Layout.fillHeight: true
+                Layout.fillWidth: true
+                color: Theme.darkGray3
+                radius: 4
+
+                RowLayout {
+                    anchors.fill: parent
+                    anchors.margins: 6
+
+                    Text {
+                        Layout.fillWidth: true
+                        color: quickLoadBar.hasTrack ? Theme.white : Theme.lightGray3
+                        elide: Text.ElideRight
+                        font.bold: quickLoadBar.hasTrack
+                        font.pixelSize: 13
+                        text: {
+                            if (!quickLoadBar.hasTrack)
+                                return qsTr("Selecciona una pista para cargar");
+                            const urlStr = quickLoadBar.selectedUrls[0].toString();
+                            const filename = decodeURIComponent(urlStr.substring(urlStr.lastIndexOf('/') + 1));
+                            return filename;
+                        }
+                    }
+                }
+            }
+
+            Skin.Button {
+                id: loadDeck1Btn
+
+                Layout.preferredHeight: 38
+                Layout.preferredWidth: 115
+                activeColor: "#64b5f6"
+                backgroundColor: quickLoadBar.hasTrack ? "#1565c0" : "#262930"
+                normalColor: quickLoadBar.hasTrack ? "#ffffff" : "#78909c"
+                highlight: quickLoadBar.hasTrack
+                enabled: quickLoadBar.hasTrack
+                font.bold: true
+                text: "◀ DECK 1"
+
+                onClicked: {
+                    view.loadSelectedTrack("[Channel1]", false);
+                }
+            }
+
+            Skin.Button {
+                id: loadDeck2Btn
+
+                Layout.preferredHeight: 38
+                Layout.preferredWidth: 115
+                activeColor: "#ffb74d"
+                backgroundColor: quickLoadBar.hasTrack ? "#e65100" : "#262930"
+                normalColor: quickLoadBar.hasTrack ? "#ffffff" : "#78909c"
+                highlight: quickLoadBar.hasTrack
+                enabled: quickLoadBar.hasTrack
+                font.bold: true
+                text: "DECK 2 ▶"
+
+                onClicked: {
+                    view.loadSelectedTrack("[Channel2]", false);
+                }
             }
         }
     }

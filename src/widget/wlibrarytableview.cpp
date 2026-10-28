@@ -6,9 +6,6 @@
 #include <QHeaderView>
 #include <QHelpEvent>
 #include <QScrollBar>
-#ifdef Q_OS_ANDROID
-#include <QScroller>
-#endif
 #include <QToolTip>
 
 #include "moc_wlibrarytableview.cpp"
@@ -50,11 +47,6 @@ WLibraryTableView::WLibraryTableView(QWidget* parent,
     setHorizontalScrollMode(QAbstractItemView::ScrollPerPixel);
 
     verticalHeader()->hide();
-#ifdef Q_OS_ANDROID
-    verticalHeader()->setMinimumSectionSize(44);
-    setVerticalScrollMode(QAbstractItemView::ScrollPerPixel);
-    QScroller::grabGesture(viewport(), QScroller::TouchGesture);
-#endif
     setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOn);
     setAlternatingRowColors(true);
 

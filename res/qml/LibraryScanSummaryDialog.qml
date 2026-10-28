@@ -1,20 +1,7 @@
-import Mixxx 1.0 as Mixxx
 import QtQuick
-import QtQuick.Dialogs
 
-MessageDialog {
+Item {
     id: root
-
-    buttons: MessageDialog.Ok
-
-    Connections {
-        function onLibraryScanSummaryAvailable(title, text, informativeText) {
-            root.title = title;
-            root.text = text;
-            root.informativeText = informativeText;
-            root.open();
-        }
-
-        target: Mixxx.Library
-    }
+    visible: false
+    // Neutralized on Android: suppresses native modal MessageDialog to prevent activity exit/crash on dismissal
 }

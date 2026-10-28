@@ -4,10 +4,9 @@
     android:installLocation="auto"
     android:versionCode="-- %%INSERT_VERSION_CODE%% --"
     android:versionName="-- %%INSERT_VERSION_NAME%% --">
-    <!-- Network permissions required exclusively for live streaming / broadcast (Icecast/Shoutcast). -->
-    <!-- The app operates standalone and offline; network sockets are opened only upon user broadcast activation. -->
-    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"  />
+    <uses-permission android:name="android.permission.INTERNET"  />
+    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO"/>
     <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE"/>
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS"  />
     <uses-permission android:name="android.permission.RECORD_AUDIO"  />
@@ -15,36 +14,51 @@
     <uses-permission android:name="android.permission.WAKE_LOCK"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"/>
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"  />
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
         android:maxSdkVersion="29" />
+    <!-- Reading the music collection. Up to Android 12 this is covered by
+         READ_EXTERNAL_STORAGE, from Android 13 (API 33) on the scoped
+         READ_MEDIA_AUDIO permission replaces it. Both are requested at
+         runtime, MANAGE_EXTERNAL_STORAGE remains the opt-in for browsing
+         arbitrary directories. -->
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32" />
 
     <supports-screens
         android:anyDensity="true"
         android:largeScreens="true"
         android:normalScreens="true"
-        android:smallScreens="true" />
+        android:smallScreens="true"
+        android:xlargeScreens="true"
+        android:resizeable="true" />
     <application
         android:name="org.qtproject.qt.android.bindings.QtApplication"
         android:hardwareAccelerated="true"
         android:icon="@mipmap/ic_launcher"
         android:label="Mixxx"
-        android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen"
+        android:theme="@android:style/Theme.NoTitleBar.Fullscreen"
         android:requestLegacyExternalStorage="true"
-        android:allowBackup="false">
-        <!-- profileable enables CPU tracing (Perfetto) and native memory profiling (heapprofd) via ADB shell -->
-        <!-- on production builds without turning on debuggable (which harms DSP compiler optimizations). -->
-        <profileable android:shell="true"/>
+        android:allowBackup="true"
+        android:fullBackupOnly="false"
+        android:extractNativeLibs="false">
         <activity
             android:name="org.mixxx.MainActivity"
             android:configChanges="orientation|uiMode|screenLayout|screenSize|smallestScreenSize|layoutDirection|locale|fontScale|keyboard|keyboardHidden|navigation|mcc|mnc|density"
             android:launchMode="singleTop"
             android:screenOrientation="sensorLandscape"
-            android:exported="true">
+            android:resizeableActivity="true"
+            android:exported="true"
+            android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <intent-filter>
+                <action android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED" />
+            </intent-filter>
+            <meta-data
+                android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED"
+                android:resource="@xml/usb_device_filter" />
 
           <meta-data
                 android:name="android.app.lib_name"
@@ -60,12 +74,8 @@
 
           <meta-data
                 android:name="android.app.arguments"
-                android:value="-- %%INSERT_APP_ARGUMENTS%% --" />
+                android:value="--new-ui --log-level debug --developer" />
         </activity>
-
-        <service android:name="org.mixxx.PlaybackService"
-            android:exported="false" android:foregroundServiceType="mediaPlayback"
-            android:stopWithTask="false" />
 
         <provider
             android:name="androidx.core.content.FileProvider"
@@ -78,7 +88,21 @@
         </provider>
     </application>
 
+    <!-- Mixxx runs fine without a USB host port (tablets, Chromebooks and
+         emulators), it just cannot use wired MIDI/HID controllers there.
+         Declaring it as required would exclude those devices from
+         installation entirely. -->
     <uses-feature
         android:name="android.hardware.usb.host"
-        android:required="true" />
+        android:required="false" />
+    <!-- Chromebooks may be operated with mouse and keyboard only. -->
+    <uses-feature
+        android:name="android.hardware.touchscreen"
+        android:required="false" />
+    <uses-feature
+        android:name="android.hardware.audio.low_latency"
+        android:required="false" />
+    <uses-feature
+        android:name="android.hardware.audio.pro"
+        android:required="false" />
 </manifest>

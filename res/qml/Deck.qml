@@ -27,6 +27,7 @@ Item {
     property bool editMode: false
     required property string group
     property bool minimized: false
+    clip: true
 
     signal toggleFocus
 
@@ -131,7 +132,7 @@ Item {
                         },
                         {
                             "type": "tempo",
-                            "minWidth": 270
+                            "minWidth": 320
                         }
                     ]
                 }
@@ -221,7 +222,9 @@ Item {
                     rightColumnWidth: 105
 
                     TapHandler {
-                        onDoubleTapped: root.toggleFocus()
+                        onTapped: {
+                            // Tapping deck info bar can signal deck focus
+                        }
                     }
                 }
             }
@@ -699,7 +702,7 @@ Item {
         Drag.active: mouseArea.drag.active
         Drag.hotSpot: Qt.point(width / 2, height / 2)
         columns: disposition == GridLayout.TopToBottom ? 1 : items.count
-        visible: typeof minWidth !== 'number' || root.width <= 0 || minWidth < root.width
+        visible: typeof minWidth !== 'number' || (root.width > 0 && root.width >= minWidth)
 
         Behavior on x {
             SpringAnimation {
@@ -785,7 +788,7 @@ Item {
 
         Drag.active: mouseArea.drag.active
         Drag.hotSpot: Qt.point(width / 2, height / 2)
-        visible: typeof minWidth !== 'number' || root.width <= 0 || minWidth < root.width
+        visible: typeof minWidth !== 'number' || (root.width > 0 && root.width >= minWidth)
 
         Behavior on x {
             SpringAnimation {

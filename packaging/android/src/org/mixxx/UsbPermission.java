@@ -6,7 +6,6 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.hardware.usb.UsbDevice;
 import android.hardware.usb.UsbManager;
-import android.os.Build;
 import android.util.Log;
 
 public class UsbPermission {
@@ -14,21 +13,11 @@ public class UsbPermission {
         "org.mixxx.permissions.USB_PERMISSION";
     private static final String TAG = "MixxxUsbPermission";
     private static native void usbDeviceAccessResult(Object device, boolean granted);
-    private static native void usbDeviceChanged(boolean attached);
-
     public boolean registerServiceBroadcastReceiver(Context context) {
         try {
-            IntentFilter intentFilter = new IntentFilter();
-            intentFilter.addAction(ACTION_USB_PERMISSION);
-            intentFilter.addAction(UsbManager.ACTION_USB_DEVICE_ATTACHED);
-            intentFilter.addAction(UsbManager.ACTION_USB_DEVICE_DETACHED);
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                context.registerReceiver(usbPermissionReceiver, intentFilter,
-                        Context.RECEIVER_NOT_EXPORTED);
-            } else {
-                context.registerReceiver(usbPermissionReceiver, intentFilter);
-            }
-            Log.i(TAG, "Registered broadcast receiver for USB permission, attach, and detach");
+            IntentFilter intentFilter = new IntentFilter(ACTION_USB_PERMISSION);
+            context.registerReceiver(usbPermissionReceiver, intentFilter, Context.RECEIVER_NOT_EXPORTED);
+            Log.i(TAG, "Registered broadcast receiver");
             return true;
         } catch (Exception e) {
             Log.w(TAG, "Unable to register the broadcast receiver: " + e.toString());
@@ -43,7 +32,7 @@ public class UsbPermission {
             Log.v(TAG, "Received " + action);
             if (ACTION_USB_PERMISSION.equals(action)) {
                 synchronized (this) {
-                    UsbDevice usbDevice = intent.getParcelableExtra(UsbManager.EXTRA_DEVICE);
+                    UsbDevice usbDevice = intent.getParcelableExtra(UsbManager.EXTRA_DEVICE, UsbDevice.class);
                     if (usbDevice == null) {
                         Log.e(TAG, "USB device is null");
                         return;
@@ -55,20 +44,6 @@ public class UsbPermission {
                     } else {
                         Log.i(TAG, "Permission was granted");
                     }
-                }
-            } else if (UsbManager.ACTION_USB_DEVICE_ATTACHED.equals(action)) {
-                Log.i(TAG, "USB device attached: " + action);
-                try {
-                    usbDeviceChanged(true);
-                } catch (UnsatisfiedLinkError e) {
-                    Log.w(TAG, "usbDeviceChanged native method not found", e);
-                }
-            } else if (UsbManager.ACTION_USB_DEVICE_DETACHED.equals(action)) {
-                Log.i(TAG, "USB device detached: " + action);
-                try {
-                    usbDeviceChanged(false);
-                } catch (UnsatisfiedLinkError e) {
-                    Log.w(TAG, "usbDeviceChanged native method not found", e);
                 }
             }
         }

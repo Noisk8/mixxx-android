@@ -25,73 +25,23 @@ Item {
         group: root.group
         key: "track_loaded"
     }
+    property int activePadMode: 0 // 0: Hotcue, 1: Loop, 2: Stem
+
     Rectangle {
         color: '#0E0E0E'
-
-        states: [
-            State {
-                name: "inactive"
-                when: trackLoadedControl.value == 0
-
-                PropertyChanges {
-                    checked: false
-                    opacity: 0.75
-                    target: hotcueTabButton
-                }
-                PropertyChanges {
-                    checked: false
-                    opacity: 0.75
-                    target: stemTabButton
-                }
-                PropertyChanges {
-                    target: stemTab
-                    visible: false
-                }
-                PropertyChanges {
-                    target: hotcueTab
-                    visible: false
-                }
-            },
-            State {
-                name: "hotcue"
-                when: hotcueTabButton.checked || stemCountControl.value == 0
-
-                PropertyChanges {
-                    target: hotcueTab
-                    visible: true
-                }
-                PropertyChanges {
-                    target: stemTab
-                    visible: false
-                }
-            },
-            State {
-                name: "stem"
-                when: stemTabButton.checked && stemCountControl.value != 0
-
-                PropertyChanges {
-                    target: stemTab
-                    visible: true
-                }
-                PropertyChanges {
-                    target: hotcueTab
-                    visible: false
-                }
-            }
-        ]
 
         anchors {
             bottom: parent.bottom
             left: parent.left
-            right: stemCountControl.value > 0 ? tabs.left : parent.right
-            rightMargin: stemCountControl.value > 0 ? 6 : 0
+            right: tabs.left
+            rightMargin: 6
             top: parent.top
         }
         Item {
             id: hotcueTab
 
             anchors.fill: parent
-            visible: false
+            visible: trackLoadedControl.value > 0 && root.activePadMode === 0
 
             Skin.FadeBehavior on visible {
                 fadeTarget: hotcueTab
@@ -199,10 +149,106 @@ Item {
             }
         }
         Item {
+            id: loopTab
+
+            anchors.fill: parent
+            visible: trackLoadedControl.value > 0 && root.activePadMode === 1
+
+            Skin.FadeBehavior on visible {
+                fadeTarget: loopTab
+            }
+
+            GridLayout {
+                anchors.bottomMargin: 8
+                anchors.fill: parent
+                anchors.leftMargin: 16
+                anchors.rightMargin: 16
+                anchors.topMargin: 8
+                columnSpacing: 6
+                rowSpacing: 6
+
+                Repeater {
+                    model: [
+                        { label: "1/4", size: "0.25" },
+                        { label: "1/2", size: "0.5" },
+                        { label: "1", size: "1" },
+                        { label: "2", size: "2" },
+                        { label: "4", size: "4" },
+                        { label: "8", size: "8" },
+                        { label: "16", size: "16" },
+                        { label: "32", size: "32" }
+                    ]
+
+                    Item {
+                        id: loopPadItem
+                        required property int index
+                        required property var modelData
+
+                        Layout.column: index % 4
+                        Layout.fillHeight: true
+                        Layout.fillWidth: true
+                        Layout.row: parseInt(index / 4)
+
+                        Mixxx.ControlProxy {
+                            id: loopToggleProxy
+                            group: root.group
+                            key: "beatloop_" + loopPadItem.modelData.size + "_toggle"
+                        }
+
+                        Mixxx.ControlProxy {
+                            id: loopEnabledProxy
+                            group: root.group
+                            key: "beatloop_" + loopPadItem.modelData.size + "_enabled"
+                        }
+
+                        Rectangle {
+                            id: loopPadBg
+                            anchors.fill: parent
+                            radius: 4
+                            color: (loopEnabledProxy.value > 0)
+                                ? "#00e5ff"
+                                : (loopPadMouse.pressed ? "#374151" : "#1a222e")
+                            border.color: (loopEnabledProxy.value > 0) ? "#ffffff" : "#2c3b4d"
+                            border.width: (loopEnabledProxy.value > 0) ? 2 : 1
+
+                            ColumnLayout {
+                                anchors.centerIn: parent
+                                spacing: 1
+
+                                Text {
+                                    Layout.alignment: Qt.AlignHCenter
+                                    font.bold: true
+                                    font.pixelSize: 15
+                                    color: (loopEnabledProxy.value > 0) ? "#001018" : "#00e5ff"
+                                    text: loopPadItem.modelData.label
+                                }
+
+                                Text {
+                                    Layout.alignment: Qt.AlignHCenter
+                                    font.bold: true
+                                    font.pixelSize: 8
+                                    color: (loopEnabledProxy.value > 0) ? "#00364a" : "#78909c"
+                                    text: "BEATS"
+                                }
+                            }
+
+                            MouseArea {
+                                id: loopPadMouse
+                                anchors.fill: parent
+                                onClicked: {
+                                    loopToggleProxy.trigger();
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        Item {
             id: stemTab
 
             anchors.fill: parent
-            visible: false
+            visible: trackLoadedControl.value > 0 && root.activePadMode === 2
 
             Skin.FadeBehavior on visible {
                 fadeTarget: stemTab
@@ -368,7 +414,7 @@ Item {
                             indicator.width: 0
                             model: Mixxx.EffectsManager.quickChainPresetModel
                             popupMaxItem: 8
-                            popupWidth: 100
+                            popupWidth: 150
                             spacing: 2
                             textRole: "display"
                             width: parent.width / 3 * 2
@@ -471,174 +517,113 @@ Item {
         anchors.right: parent.right
         anchors.rightMargin: 6
         anchors.top: parent.top
-        spacing: 10
-        width: stemCountControl.value > 0 ? 36 : 0
+        spacing: 6
+        width: 44
 
-        Behavior on width {
-            SpringAnimation {
-                damping: 0.2
-                duration: 500
-                spring: 2
-            }
-        }
-
-        Skin.Button {
-            id: hotcueTabButton
-
+        Rectangle {
             Layout.fillWidth: true
-            Layout.margins: 0
-            activeColor: Theme.deckActiveColor
-            checked: true
-            implicitHeight: 30
+            Layout.fillHeight: true
+            radius: 4
+            color: root.activePadMode === 0 ? Theme.deckActiveColor : (cueTabMouse.pressed ? "#333333" : "#1e222b")
+            border.color: root.activePadMode === 0 ? "#ffffff" : "#323947"
+            border.width: root.activePadMode === 0 ? 1 : 0
 
-            contentItem: Shape {
+            ColumnLayout {
+                anchors.centerIn: parent
+                spacing: 2
+                Text {
+                    Layout.alignment: Qt.AlignHCenter
+                    text: "⚑"
+                    font.pixelSize: 12
+                    color: root.activePadMode === 0 ? "#ffffff" : "#90a4ae"
+                }
+                Text {
+                    Layout.alignment: Qt.AlignHCenter
+                    text: "CUE"
+                    font.bold: true
+                    font.pixelSize: 9
+                    color: root.activePadMode === 0 ? "#ffffff" : "#90a4ae"
+                }
+            }
+
+            MouseArea {
+                id: cueTabMouse
                 anchors.fill: parent
-                antialiasing: true
-                layer.enabled: true
-                layer.samples: 4
-
-                ShapePath {
-                    fillColor: '#D9D9D9'
-                    startX: 10
-                    startY: 4
-
-                    PathLine {
-                        x: 26
-                        y: 4
-                    }
-                    PathLine {
-                        x: 19.5
-                        y: 10
-                    }
-                    PathLine {
-                        x: 19.5
-                        y: 24
-                    }
-                    PathLine {
-                        x: 16.5
-                        y: 24
-                    }
-                    PathLine {
-                        x: 16.5
-                        y: 10
-                    }
-                    PathLine {
-                        x: 10
-                        y: 4
-                    }
+                onClicked: {
+                    root.activePadMode = 0;
                 }
-            }
-
-            onClicked: {
-                stemTabButton.checked = false;
-                hotcueTabButton.checked = trackLoadedControl.value == 1;
             }
         }
-        Skin.Button {
-            id: stemTabButton
 
+        Rectangle {
             Layout.fillWidth: true
-            Layout.margins: 0
-            activeColor: Theme.deckActiveColor
-            implicitHeight: 30
+            Layout.fillHeight: true
+            radius: 4
+            color: root.activePadMode === 1 ? "#00b0ff" : (loopTabMouse.pressed ? "#333333" : "#1e222b")
+            border.color: root.activePadMode === 1 ? "#ffffff" : "#323947"
+            border.width: root.activePadMode === 1 ? 1 : 0
 
-            contentItem: Item {
-                Rectangle {
-                    color: '#D9D9D9'
-                    height: 1
-
-                    anchors {
-                        left: parent.left
-                        leftMargin: 5
-                        right: parent.right
-                        rightMargin: 5
-                        top: parent.top
-                        topMargin: 6
-                    }
+            ColumnLayout {
+                anchors.centerIn: parent
+                spacing: 2
+                Text {
+                    Layout.alignment: Qt.AlignHCenter
+                    text: "⟲"
+                    font.pixelSize: 13
+                    font.bold: true
+                    color: root.activePadMode === 1 ? "#001018" : "#90a4ae"
                 }
-                Rectangle {
-                    color: '#D9D9D9'
-                    height: 1
-
-                    anchors {
-                        left: parent.left
-                        leftMargin: 5
-                        right: parent.right
-                        rightMargin: 14
-                        top: parent.top
-                        topMargin: 12
-                    }
-                }
-                Rectangle {
-                    color: '#D9D9D9'
-                    height: 1
-
-                    anchors {
-                        bottom: parent.bottom
-                        bottomMargin: 12
-                        left: parent.left
-                        leftMargin: 5
-                        right: parent.right
-                        rightMargin: 22
-                    }
-                }
-                Rectangle {
-                    color: '#D9D9D9'
-                    height: 1
-
-                    anchors {
-                        bottom: parent.bottom
-                        bottomMargin: 13
-                        left: parent.left
-                        leftMargin: 22
-                        right: parent.right
-                        rightMargin: 5
-                    }
-                }
-                Rectangle {
-                    color: '#D9D9D9'
-                    height: 1
-
-                    anchors {
-                        bottom: parent.bottom
-                        bottomMargin: 6
-                        left: parent.left
-                        leftMargin: 5
-                        right: parent.right
-                        rightMargin: 26
-                    }
-                }
-                Rectangle {
-                    color: '#D9D9D9'
-                    height: 1
-
-                    anchors {
-                        bottom: parent.bottom
-                        bottomMargin: 6
-                        left: parent.left
-                        leftMargin: 14
-                        right: parent.right
-                        rightMargin: 15
-                    }
-                }
-                Rectangle {
-                    color: '#D9D9D9'
-                    height: 1
-
-                    anchors {
-                        bottom: parent.bottom
-                        bottomMargin: 6
-                        left: parent.left
-                        leftMargin: 26
-                        right: parent.right
-                        rightMargin: 5
-                    }
+                Text {
+                    Layout.alignment: Qt.AlignHCenter
+                    text: "LOOP"
+                    font.bold: true
+                    font.pixelSize: 9
+                    color: root.activePadMode === 1 ? "#001018" : "#90a4ae"
                 }
             }
 
-            onClicked: {
-                stemTabButton.checked = trackLoadedControl.value == 1 && stemCountControl.value != 0;
-                hotcueTabButton.checked = !stemTabButton.checked;
+            MouseArea {
+                id: loopTabMouse
+                anchors.fill: parent
+                onClicked: {
+                    root.activePadMode = 1;
+                }
+            }
+        }
+
+        Rectangle {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            radius: 4
+            visible: stemCountControl.value > 0
+            color: root.activePadMode === 2 ? "#ab47bc" : (stemTabMouse.pressed ? "#333333" : "#1e222b")
+            border.color: root.activePadMode === 2 ? "#ffffff" : "#323947"
+            border.width: root.activePadMode === 2 ? 1 : 0
+
+            ColumnLayout {
+                anchors.centerIn: parent
+                spacing: 2
+                Text {
+                    Layout.alignment: Qt.AlignHCenter
+                    text: "🎚"
+                    font.pixelSize: 12
+                    color: root.activePadMode === 2 ? "#ffffff" : "#90a4ae"
+                }
+                Text {
+                    Layout.alignment: Qt.AlignHCenter
+                    text: "STEM"
+                    font.bold: true
+                    font.pixelSize: 9
+                    color: root.activePadMode === 2 ? "#ffffff" : "#90a4ae"
+                }
+            }
+
+            MouseArea {
+                id: stemTabMouse
+                anchors.fill: parent
+                onClicked: {
+                    root.activePadMode = 2;
+                }
             }
         }
     }

@@ -101,6 +101,8 @@ void QmlPlayerManagerProxy::loadLocationUrlToDeck(
 
 void QmlPlayerManagerProxy::loadLocationToPlayer(
         const QString& location, const QString& group, bool play) {
+    mixxx::FileInfo fileInfo(location);
+    Sandbox::createSecurityToken(&fileInfo);
     m_pPlayerManager->slotLoadLocationToPlayer(location, group, play);
 }
 

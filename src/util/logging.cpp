@@ -19,6 +19,9 @@
 #include "util/assert.h"
 #include "util/cmdlineargs.h"
 #include "util/compatibility/qmutex.h"
+#if defined(Q_OS_ANDROID)
+#include <android/log.h>
+#endif
 
 namespace {
 
@@ -293,6 +296,13 @@ void handleMessage(
         QtMsgType type,
         const QMessageLogContext& context,
         const QString& input) {
+#if defined(Q_OS_ANDROID)
+    android_LogPriority prio = ANDROID_LOG_INFO;
+    if (type == QtWarningMsg) prio = ANDROID_LOG_WARN;
+    else if (type == QtCriticalMsg) prio = ANDROID_LOG_ERROR;
+    else if (type == QtFatalMsg) prio = ANDROID_LOG_FATAL;
+    __android_log_print(prio, "MixxxNative", "[%s] %s", context.category ? context.category : "default", input.toLocal8Bit().constData());
+#endif
     const char* levelName = nullptr;
     WriteFlags writeFlags = WriteFlag::None;
     bool isDebugAssert = false;

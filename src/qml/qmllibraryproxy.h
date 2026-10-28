@@ -163,12 +163,18 @@ class QmlLibraryProxy : public QObject {
                 &QmlLibraryProxy::sources_clear};
     }
 
-    Q_INVOKABLE mixxx::qml::QmlLibraryProxy::AddResult addSource(const QString& newPath);
+    Q_INVOKABLE mixxx::qml::QmlLibraryProxy::AddResult addSource(const QUrl& newPath);
     Q_INVOKABLE mixxx::qml::QmlLibraryProxy::RemoveResult removeSource(
-            const QString& oldPath,
+            const QUrl& oldPath,
             mixxx::qml::QmlLibraryProxy::SourceRemovalType type);
     Q_INVOKABLE mixxx::qml::QmlLibraryProxy::RelocateResult relinkSource(
-            const QString& oldPath, const QString& newPath);
+            const QUrl& oldPath, const QUrl& newPath);
+
+    Q_INVOKABLE QVariantList getSourcesList() const;
+    Q_INVOKABLE bool addSourcePath(const QString& rawPath);
+    Q_INVOKABLE bool removeSourcePath(const QString& rawPath);
+    Q_INVOKABLE QStringList getSubDirectories(const QString& rawPath) const;
+    Q_INVOKABLE QString defaultMusicDirectory() const;
 
     static void registerKeyboardEventFilter(std::shared_ptr<KeyboardEventFilter> pKeyboard) {
         s_pKeyboard = std::move(pKeyboard);
@@ -186,6 +192,8 @@ class QmlLibraryProxy : public QObject {
     bool enginePrimeExportAvailable() const;
 
     Q_INVOKABLE void analyze(const mixxx::qml::QmlTrackProxy* track) const;
+    Q_INVOKABLE void analyzeAllTracks() const;
+    Q_INVOKABLE void analyzeUnanalyzedTracks() const;
     Q_INVOKABLE void createCrate();
     Q_INVOKABLE void createPlaylist();
     Q_INVOKABLE void exportLibrary();
@@ -214,6 +222,7 @@ class QmlLibraryProxy : public QObject {
             int hotcueNumber);
 
   signals:
+    void sourcesChanged();
     void libraryScanActiveChanged();
     void waveformCacheDiskUsageChanged();
     void libraryScanSummaryAvailable(

@@ -247,7 +247,7 @@ void WMainMenuBar::initialize() {
     connectMenuToSlotShowMenuBar(pViewMenu);
 #endif
 
-#if !defined(__APPLE__) && !defined(Q_OS_ANDROID)
+#ifndef __APPLE__
     // Show menu bar
     QString showMenuBarTitle = tr("Auto-hide menu bar");
     QString showMenuBarText = tr("Auto-hide the main menu bar when it's not used.");

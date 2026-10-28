@@ -49,6 +49,7 @@
 #include "qml/qmlplayermanagerproxy.h"
 #include "qml/qmlpreferencesproxy.h"
 #include "qml/qmlsoundmanagerproxy.h"
+#include "qml/qmlstreamingproxy.h"
 #endif
 #include "soundio/soundmanager.h"
 #include "sources/soundsourceproxy.h"
@@ -71,9 +72,7 @@
 #include <X11/XKBlib.h>
 #endif
 #if defined(Q_OS_ANDROID)
-#include <QtCore/private/qandroidextras_p.h>
-
-#include "soundio/androidaudiofocus.h"
+#include "util/androidpermissions.h"
 #endif
 
 #if defined(Q_OS_LINUX) && QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
@@ -483,59 +482,6 @@ void CoreServices::initializeLogging() {
             logFlags);
 }
 
-#if defined(Q_OS_ANDROID)
-namespace {
-
-// Shared storage folders where Android users commonly keep their music.
-// QStandardPaths::writableLocation(MusicLocation) returns an empty string on
-// Android 11+ because public directories are not directly reachable in scoped
-// storage, so the standard location cannot be used to seed the library.
-const QStringList kAndroidMusicDirCandidates = {
-        QStringLiteral("/storage/emulated/0/Music"),
-        QStringLiteral("/storage/emulated/0/DCIM/Music"),
-        QStringLiteral("/storage/emulated/0/Download"),
-        QStringLiteral("/storage/emulated/0/Podcasts"),
-        QStringLiteral("/storage/emulated/0/Movies"),
-};
-
-QStringList androidMusicDirsToSeed(const UserSettingsPointer& pConfig) {
-    // Seed exactly once, so that removing every directory by hand is not
-    // silently undone on the next start.
-    if (pConfig->getValue(mixxx::library::prefs::kAndroidDirsSeededConfigKey, false)) {
-        return {};
-    }
-    // StorageBridge.requestAccess() posts its dialog to the main looper, so the
-    // permission is still missing when this returns. Seeding right now would
-    // fail with InvalidOrMissingDirectory and never be retried, so ask now and
-    // let the next start do the seeding.
-    const QJniObject context = QNativeInterface::QAndroidApplication::context();
-    if (!QJniObject::callStaticMethod<jboolean>("org/mixxx/StorageBridge",
-                "hasAccess",
-                "(Landroid/content/Context;)Z",
-                context)) {
-        QJniObject::callStaticMethod<void>("org/mixxx/StorageBridge",
-                "requestAccess",
-                "(Landroid/content/Context;)V",
-                context);
-        return {};
-    }
-    QStringList result;
-    for (const QString& path : kAndroidMusicDirCandidates) {
-        // Only add folders that already exist, otherwise the scanner would
-        // keep retrying a path that was never there.
-        if (QDir(path).exists()) {
-            result.append(path);
-        }
-    }
-    if (!result.isEmpty()) {
-        pConfig->setValue(mixxx::library::prefs::kAndroidDirsSeededConfigKey, true);
-    }
-    return result;
-}
-
-} // namespace
-#endif // Q_OS_ANDROID
-
 void CoreServices::initialize(QApplication* pApp) {
     VERIFY_OR_DEBUG_ASSERT(!m_isInitialized) {
         return;
@@ -549,6 +495,13 @@ void CoreServices::initialize(QApplication* pApp) {
     }
 
     VersionStore::logBuildDetails();
+
+#if defined(Q_OS_ANDROID)
+    // Ask for collection access on every start: the user may have revoked the
+    // permission in the system settings since the last run, and without it the
+    // library scan finds nothing at all.
+    mixxx::android::requestMusicLibraryPermissions();
+#endif
 
 #if defined(Q_OS_LINUX) && QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
     // XESetWireToError will segfault if running as a Wayland client
@@ -697,7 +650,6 @@ void CoreServices::initialize(QApplication* pApp) {
     bool musicDirAdded = false;
 
     if (m_pTrackCollectionManager->internalCollection()->loadRootDirs().isEmpty()) {
-        QStringList musicDirs;
 #if defined(Q_OS_IOS) || defined(Q_OS_WASM)
         // On the web and iOS, we are running in a sandbox (a virtual file
         // system on the web). Since we are generally limited to paths within
@@ -708,14 +660,15 @@ void CoreServices::initialize(QApplication* pApp) {
         // Advanced users can still customize this directory in the settings.
         QString fd = QStandardPaths::writableLocation(QStandardPaths::MusicLocation);
         QDir dir = fd;
-        if (!fd.isEmpty() && !dir.exists()) {
+        if (!dir.exists()) {
             dir.mkpath(".");
         }
-        if (!fd.isEmpty()) {
-            musicDirs = QStringList{fd};
-        }
 #elif defined(Q_OS_ANDROID)
-        musicDirs = androidMusicDirsToSeed(pConfig);
+        // "All files access" is what allows Mixxx to browse directories
+        // outside of the media store. It is optional: if the user declines,
+        // the default music directory below is still readable.
+        mixxx::android::requestFullExternalStorageAccess();
+        QString fd = mixxx::android::defaultMusicDirectory();
 #else
         // TODO(XXX) this needs to be smarter, we can't distinguish between an empty
         // path return value (not sure if this is normally possible, but it is
@@ -729,15 +682,10 @@ void CoreServices::initialize(QApplication* pApp) {
                 QStandardPaths::writableLocation(
                         QStandardPaths::MusicLocation),
                 QFileDialog::ShowDirsOnly);
-        if (!fd.isEmpty()) {
-            musicDirs = QStringList{fd};
-        }
 #endif
         // request to add directory to database.
-        for (const QString& dir : musicDirs) {
-            if (m_pLibrary->requestAddDir(dir)) {
-                musicDirAdded = true;
-            }
+        if (!fd.isEmpty() && m_pLibrary->requestAddDir(fd)) {
+            musicDirAdded = true;
         }
     }
 
@@ -747,9 +695,6 @@ void CoreServices::initialize(QApplication* pApp) {
     // (long)
     qDebug() << "Creating ControllerManager";
     m_pControllerManager = std::make_shared<ControllerManager>(pConfig);
-#ifdef Q_OS_ANDROID
-    m_pAudioFocus = std::make_unique<android::AudioFocus>(m_pSoundManager.get(), m_pControllerManager.get(), this, m_cmdlineArgs.getDeveloper());
-#endif
 
     // Scan the library for new files and directories
     bool rescan = m_cmdlineArgs.getRescanLibrary() ||
@@ -846,6 +791,8 @@ void CoreServices::initializeQMLSingletons() {
     mixxx::qml::QmlApplicationProxy::registerVinylControlManager(
             getVinylControlManager().get());
     mixxx::qml::QmlPlayerManagerProxy::registerPlayerManager(getPlayerManager());
+    mixxx::qml::QmlStreamingProxy::registerPlayerManager(getPlayerManager());
+    mixxx::qml::QmlStreamingProxy::registerUserSettings(getSettings());
     mixxx::qml::QmlConfigProxy::registerUserSettings(getSettings());
     mixxx::qml::QmlLibraryProxy::registerLibrary(getLibrary());
     mixxx::qml::QmlLibraryProxy::registerKeyboardEventFilter(getKeyboardEventFilter());
@@ -944,10 +891,6 @@ void CoreServices::finalize() {
     Timer t("CoreServices::~CoreServices");
     t.start();
 
-#ifdef Q_OS_ANDROID
-    m_pAudioFocus.reset();
-#endif
-
 #ifdef MIXXX_USE_QML
     // Delete all the QML singletons in order to prevent controller leaks
     mixxx::qml::QmlEffectsManagerProxy::registerEffectsManager(nullptr);
@@ -955,6 +898,8 @@ void CoreServices::finalize() {
     mixxx::qml::QmlApplicationProxy::registerKeyboardEventFilter(nullptr);
     mixxx::qml::QmlApplicationProxy::registerVinylControlManager(nullptr);
     mixxx::qml::QmlPlayerManagerProxy::registerPlayerManager(nullptr);
+    mixxx::qml::QmlStreamingProxy::registerPlayerManager(nullptr);
+    mixxx::qml::QmlStreamingProxy::registerUserSettings(nullptr);
     mixxx::qml::QmlConfigProxy::registerUserSettings(nullptr);
     mixxx::qml::QmlLibraryProxy::registerLibrary(nullptr);
     mixxx::qml::QmlLibraryProxy::registerKeyboardEventFilter(nullptr);

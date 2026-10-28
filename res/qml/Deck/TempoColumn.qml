@@ -8,8 +8,11 @@ import QtQuick.Shapes
 import "../Theme"
 
 ColumnLayout {
+    id: root
+
     required property var currentTrack
     required property string group
+    property bool minimized: false
 
     Mixxx.ControlProxy {
         id: keylockCO
@@ -184,7 +187,6 @@ ColumnLayout {
         group: root.group
         key: "rate"
         visible: !root.minimized
-        width: pitchKey.implicitWidth
 
         Skin.FadeBehavior on visible {
             fadeTarget: rateSlider

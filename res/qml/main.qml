@@ -29,6 +29,12 @@ ApplicationWindow {
                 : Window.Windowed;
     }
 
+    function openQuickLoad(group) {
+        if (content.item && typeof content.item.openQuickLoad === "function") {
+            content.item.openQuickLoad(group);
+        }
+    }
+
     Connections {
         target: Mixxx.Core
         function onReadyChanged() {
@@ -69,14 +75,51 @@ ApplicationWindow {
             ready = true
         }
 
+        Column {
+            id: splashContent
+            anchors.centerIn: parent
+            spacing: 14
+            opacity: 0
+
+            Image {
+                id: logo
+                anchors.horizontalCenter: parent.horizontalCenter
+                source: "qrc:/images/mixxx-icon-logo-symbolic.svg"
+                fillMode: Image.PreserveAspectFit
+                height: 72
+                width: 72
+            }
+
+            Text {
+                id: titleText
+                anchors.horizontalCenter: parent.horizontalCenter
+                color: Theme.white
+                font.pixelSize: 28
+                font.bold: true
+                font.letterSpacing: 2
+                text: "MIXXX"
+            }
+
+            Text {
+                id: subtitleText
+                anchors.horizontalCenter: parent.horizontalCenter
+                color: Theme.accentColor
+                font.pixelSize: 14
+                font.weight: Font.DemiBold
+                text: "by JaviLabarum on Android"
+            }
+
+            Behavior on opacity {
+                NumberAnimation { duration: 1000; easing.type: Easing.InOutQuad }
+            }
+        }
+
         states: [
             State {
                 when: splash.ready && content.status != Loader.Ready
 
                 PropertyChanges {
-                    text.opacity: 1
-                    logo.opacity: 1
-                    logo.y: root.height / 2 - logo.height / 2
+                    splashContent.opacity: 1
                 }
             },
             State {
@@ -87,38 +130,6 @@ ApplicationWindow {
                 }
             }
         ]
-        Image {
-            id: logo
-            anchors.horizontalCenter: parent.horizontalCenter
-            source: "qrc:/images/mixxx-icon-logo-symbolic.svg"
-            // height: 64
-            opacity: 0
-            y: root.height / 2
-
-            Behavior on opacity {
-                NumberAnimation { duration: 1500; easing.type: Easing.InOutQuad }
-            }
-
-            Behavior on y {
-                NumberAnimation { duration: 1500; easing.type: Easing.InOutQuad }
-            }
-        }
-        Text {
-            id: text
-            opacity: 0
-            y: logo.y + logo.height*2
-            anchors.horizontalCenter: parent.horizontalCenter
-            anchors.topMargin: 20
-            font.pixelSize: 12
-            color: Theme.lightGray3
-            text: "DJ your way"
-            Behavior on opacity {
-                SequentialAnimation {
-                    PauseAnimation { duration: 1000 }
-                    NumberAnimation { duration: 500; easing.type: Easing.InOutQuad }
-                }
-            }
-        }
 
         Behavior on opacity {
             NumberAnimation { duration: 500; easing.type: Easing.InOutQuad }

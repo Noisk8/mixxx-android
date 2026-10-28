@@ -313,7 +313,12 @@ void QmlControllerMappingProxy::fetchMappingDetails() {
 }
 
 bool QmlControllerMappingProxy::isUserMapping(const QmlConfigProxy* pConfig) const {
-    return m_mappingDefinition.getPath().startsWith(userMappingsPath(pConfig->get()));
+    const QString path = m_mappingDefinition.getPath();
+    return path.startsWith(userMappingsPath(pConfig->get()))
+#if defined(Q_OS_ANDROID)
+            || path.startsWith(QStringLiteral("/storage/emulated/0/Mixxx/controllers/"))
+#endif
+            ;
 }
 
 QmlControllerMappingProxy::QmlControllerMappingProxy(
@@ -672,6 +677,14 @@ void QmlControllerManagerProxy::refreshMappings() {
     loadMappingFromEnumerator(m_pControllerManager->getMainThreadSystemMappingEnumerator());
     loadMappingFromEnumerator(m_pControllerManager->getMainThreadUserMappingEnumerator());
 }
+
+void QmlControllerManagerProxy::rescan() {
+    if (m_pControllerManager) {
+        m_pControllerManager->setUpDevices();
+    }
+    refreshKnownDevices();
+}
+
 void QmlControllerManagerProxy::refreshKnownDevices() {
     const auto controllers = m_pControllerManager->getControllers();
     for (auto* pController : std::as_const(controllers)) {

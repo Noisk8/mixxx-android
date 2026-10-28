@@ -6,7 +6,8 @@ Skin.ControlButton {
 
     property bool minimized: false
 
-    activeColor: Theme.deckActiveColor
+    activeColor: "#ff9100"
     key: "cue_default"
-    text: "Cue"
+    text: "CUE"
+    font.bold: true
 }
