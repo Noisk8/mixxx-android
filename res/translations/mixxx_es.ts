@@ -18454,4 +18454,54 @@ Please select an input device in the sound hardware preferences first.</source>
         <translation>Ningún efecto cargado.</translation>
     </message>
 </context>
+<!-- START_AI_GENERATED_DISCLAIMER -->
+<!-- This translation block was prepared with the assistance of an AI Agent (Antigravity). -->
+<context>
+    <name>Pioneered</name>
+    <message>
+        <source>OVERVIEW</source>
+        <translation>RESUMEN</translation>
+    </message>
+    <message>
+        <source>BROWSE</source>
+        <translation>EXPLORAR</translation>
+    </message>
+    <message>
+        <source>SAMPLES</source>
+        <translation>MUESTRAS</translation>
+    </message>
+    <message>
+        <source>BEAT FX</source>
+        <translation>BEAT FX</translation>
+    </message>
+    <message>
+        <source>ACTIVE</source>
+        <translation>ACTIVO</translation>
+    </message>
+    <message>
+        <source>OFF</source>
+        <translation>DESACTIVADO</translation>
+    </message>
+    <message>
+        <source>Empty</source>
+        <translation>Vacío</translation>
+    </message>
+    <message>
+        <source>Sample</source>
+        <translation>Muestra</translation>
+    </message>
+    <message>
+        <source>Deck %1 (No track loaded)</source>
+        <translation>Deck %1 (Sin pista cargada)</translation>
+    </message>
+    <message>
+        <source>SAMPLERS 1 - 8 (DECK 1)</source>
+        <translation>SAMPLERS 1 - 8 (DECK 1)</translation>
+    </message>
+    <message>
+        <source>SAMPLERS 9 - 16 (DECK 2)</source>
+        <translation>SAMPLERS 9 - 16 (DECK 2)</translation>
+    </message>
+</context>
+<!-- END_AI_GENERATED_DISCLAIMER -->
 </TS>
