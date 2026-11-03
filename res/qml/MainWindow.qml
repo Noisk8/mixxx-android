@@ -7,30 +7,49 @@ import QtQuick.Window
 import QtQuick.Shapes
 import Qt5Compat.GraphicalEffects
 import "Theme"
+import "Pioneered" as Pioneered
 
 Item {
     id: root
 
+    readonly property string activeSkin: (Mixxx.Config.configSkin && Mixxx.Config.configSkin.length > 0) ? Mixxx.Config.configSkin : "Classic"
     required property ApplicationWindow applicationWindow
-    property alias menuBar: nativeApplicationMenuLoader.item
-
     property alias editDeck: editDeckButton.checked
     property var focusedDeck: null
-    property int viewMode: 1
+    readonly property bool isPioneered: activeSkin === "Pioneered"
     property bool maximizeLibrary: viewMode === 2
+    property alias menuBar: nativeApplicationMenuLoader.item
     readonly property int numDecks: 4
     readonly property int numPreviewDecks: 1
     readonly property int numSamplers: 16
-    readonly property int waveformOverviewTypeRgb: 2
     readonly property bool show4decks: show4DecksButton.checked && show4DecksButton.visible
     property bool showEffects: false
     property bool showSamplers: false
+    property int viewMode: 1
+    readonly property int waveformOverviewTypeRgb: 2
 
     function openQuickLoad(group) {
         quickLoadDrawer.targetDeck = (group && group.length > 0) ? group : "[Channel1]";
         quickLoadDrawer.open();
     }
 
+    Component.onCompleted: {
+        if (root.activeSkin === "Booth") {
+            root.viewMode = 3;
+        }
+    }
+
+    Connections {
+        function onConfigSkinChanged() {
+            if (Mixxx.Config.configSkin === "Booth") {
+                root.viewMode = 3;
+            } else if (Mixxx.Config.configSkin === "Classic" && root.viewMode === 3) {
+                root.viewMode = 1;
+            }
+        }
+
+        target: Mixxx.Config
+    }
     Loader {
         id: nativeApplicationMenuLoader
 
@@ -100,13 +119,16 @@ Item {
     }
     Mixxx.ControlProxy {
         id: headSplitControl
+
         group: "[Master]"
         key: "headSplit"
     }
     Mixxx.ControlProxy {
         id: recordingStatusControl
+
         group: "[Recording]"
         key: "status"
+
         onValueChanged: {
             if (value > 0) {
                 recBlinkTimer.recSeconds = 0;
@@ -118,16 +140,19 @@ Item {
     }
     Mixxx.ControlProxy {
         id: recordingToggleControl
+
         group: "[Recording]"
         key: "toggle_recording"
     }
     Timer {
         id: recBlinkTimer
-        interval: 500
-        repeat: true
+
         property bool blink: false
         property int recSeconds: 0
         property string recTimeStr: "00:00"
+
+        interval: 500
+        repeat: true
 
         onTriggered: {
             blink = !blink;
@@ -143,7 +168,8 @@ Item {
         id: content
 
         anchors.fill: parent
-        enabled: !quickLoadDrawer.opened && !settingsPopup.opened
+        enabled: visible && !quickLoadDrawer.opened && !settingsPopup.opened
+        visible: !root.isPioneered
 
         move: Transition {
             NumberAnimation {
@@ -163,28 +189,29 @@ Item {
 
             Text {
                 id: logoText
+
                 anchors.left: parent.left
                 anchors.leftMargin: 10
                 anchors.verticalCenter: parent.verticalCenter
                 color: Theme.accentColor
                 font.bold: true
-                font.pixelSize: 14
                 font.letterSpacing: 1.5
+                font.pixelSize: 14
                 text: "MIXXX"
             }
-
             Skin.Button {
                 id: showPreferencesButton
+
+                activeColor: Theme.accentColor
                 anchors.right: parent.right
                 anchors.rightMargin: 6
                 anchors.verticalCenter: parent.verticalCenter
-                height: 30
-                width: 36
-                activeColor: Theme.accentColor
                 checked: settingsPopup.opened
+                height: 30
                 icon.height: 18
                 icon.source: "images/gear.svg"
                 icon.width: 18
+                width: 36
 
                 onClicked: {
                     if (!settingsPopup.opened) {
@@ -195,22 +222,23 @@ Item {
                     Mixxx.PreferencesDialog.show();
                 }
             }
-
             Flickable {
                 id: toolbarFlickable
+
+                anchors.bottom: parent.bottom
                 anchors.left: logoText.right
                 anchors.leftMargin: 8
                 anchors.right: showPreferencesButton.left
                 anchors.rightMargin: 8
                 anchors.top: parent.top
-                anchors.bottom: parent.bottom
-                contentWidth: toolbarRow.implicitWidth
-                flickableDirection: Flickable.HorizontalFlick
                 boundsBehavior: Flickable.StopAtBounds
                 clip: true
+                contentWidth: toolbarRow.implicitWidth
+                flickableDirection: Flickable.HorizontalFlick
 
                 RowLayout {
                     id: toolbarRow
+
                     anchors.verticalCenter: parent.verticalCenter
                     height: parent.height
                     spacing: 4
@@ -218,10 +246,10 @@ Item {
                     Rectangle {
                         Layout.preferredHeight: 30
                         Layout.preferredWidth: 236
-                        color: "#181a20"
-                        radius: 4
                         border.color: "#2a2e39"
                         border.width: 1
+                        color: "#181a20"
+                        radius: 4
 
                         RowLayout {
                             anchors.fill: parent
@@ -233,163 +261,169 @@ Item {
                                 Layout.fillWidth: true
                                 activeColor: Theme.accentColor
                                 backgroundColor: root.viewMode === 1 ? Theme.accentColor : "transparent"
-                                normalColor: root.viewMode === 1 ? "#ffffff" : "#90a4ae"
-                                text: "DJ"
                                 font.bold: true
                                 font.pixelSize: 10
+                                normalColor: root.viewMode === 1 ? "#ffffff" : "#90a4ae"
+                                text: "DJ"
+
                                 onClicked: root.viewMode = 1
                             }
-
                             Skin.Button {
                                 Layout.fillHeight: true
                                 Layout.fillWidth: true
                                 activeColor: Theme.accentColor
                                 backgroundColor: root.viewMode === 3 ? Theme.accentColor : "transparent"
-                                normalColor: root.viewMode === 3 ? "#ffffff" : "#90a4ae"
-                                text: "WAVE"
                                 font.bold: true
                                 font.pixelSize: 10
+                                normalColor: root.viewMode === 3 ? "#ffffff" : "#90a4ae"
+                                text: "WAVE"
+
                                 onClicked: root.viewMode = 3
                             }
-
                             Skin.Button {
                                 Layout.fillHeight: true
                                 Layout.fillWidth: true
                                 activeColor: Theme.accentColor
                                 backgroundColor: root.viewMode === 2 ? Theme.accentColor : "transparent"
-                                normalColor: root.viewMode === 2 ? "#ffffff" : "#90a4ae"
-                                text: "LIB"
                                 font.bold: true
                                 font.pixelSize: 10
+                                normalColor: root.viewMode === 2 ? "#ffffff" : "#90a4ae"
+                                text: "LIB"
+
                                 onClicked: root.viewMode = 2
                             }
-
                             Skin.Button {
                                 Layout.fillHeight: true
                                 Layout.fillWidth: true
                                 activeColor: Theme.accentColor
                                 backgroundColor: root.viewMode === 0 ? Theme.accentColor : "transparent"
-                                normalColor: root.viewMode === 0 ? "#ffffff" : "#90a4ae"
-                                text: "CTL"
                                 font.bold: true
                                 font.pixelSize: 10
+                                normalColor: root.viewMode === 0 ? "#ffffff" : "#90a4ae"
+                                text: "CTL"
+
                                 onClicked: root.viewMode = 0
                             }
                         }
                     }
-
                     Skin.Button {
                         id: quickLoadD1Button
+
                         Layout.preferredHeight: 30
                         Layout.preferredWidth: 62
                         activeColor: "#64b5f6"
                         backgroundColor: "#1565c0"
-                        normalColor: "#ffffff"
                         font.bold: true
                         font.pixelSize: 10
+                        normalColor: "#ffffff"
                         text: "LOAD 1"
+
                         onClicked: root.openQuickLoad("[Channel1]")
                     }
-
                     Skin.Button {
                         id: quickLoadD2Button
+
                         Layout.preferredHeight: 30
                         Layout.preferredWidth: 62
                         activeColor: "#ffb74d"
                         backgroundColor: "#e65100"
-                        normalColor: "#ffffff"
                         font.bold: true
                         font.pixelSize: 10
+                        normalColor: "#ffffff"
                         text: "LOAD 2"
+
                         onClicked: root.openQuickLoad("[Channel2]")
                     }
-
                     Skin.Button {
                         id: showEffectsButton
+
                         Layout.preferredHeight: 30
                         Layout.preferredWidth: 42
                         activeColor: "#e040fb"
                         backgroundColor: root.showEffects ? "#4a148c" : "#222733"
-                        normalColor: root.showEffects ? "#ea80fc" : "#b0bec5"
                         checkable: true
                         checked: root.showEffects
-                        text: "FX"
                         font.bold: true
                         font.pixelSize: 10
+                        normalColor: root.showEffects ? "#ea80fc" : "#b0bec5"
+                        text: "FX"
+
                         onClicked: root.showEffects = !root.showEffects
                     }
-
                     Skin.Button {
                         id: xyPadButton
+
                         Layout.preferredHeight: 30
                         Layout.preferredWidth: 54
                         activeColor: "#00e5ff"
                         backgroundColor: xyPadOverlay.visible ? "#006064" : "#222733"
-                        normalColor: xyPadOverlay.visible ? "#00e5ff" : "#b0bec5"
                         checkable: true
                         checked: xyPadOverlay.visible
-                        text: "XY"
                         font.bold: true
                         font.pixelSize: 10
+                        normalColor: xyPadOverlay.visible ? "#00e5ff" : "#b0bec5"
+                        text: "XY"
+
                         onClicked: xyPadOverlay.visible = !xyPadOverlay.visible
                     }
-
                     Skin.Button {
                         id: splitCueButton
+
                         Layout.preferredHeight: 30
                         Layout.preferredWidth: 52
                         activeColor: "#ff9100"
                         backgroundColor: headSplitControl.value > 0 ? "#e65100" : "#222733"
-                        normalColor: headSplitControl.value > 0 ? "#ffffff" : "#b0bec5"
                         checkable: true
                         checked: headSplitControl.value > 0
-                        text: "SPLIT"
                         font.bold: true
                         font.pixelSize: 10
+                        normalColor: headSplitControl.value > 0 ? "#ffffff" : "#b0bec5"
+                        text: "SPLIT"
+
                         onClicked: {
                             headSplitControl.value = (headSplitControl.value > 0) ? 0 : 1;
                         }
                     }
-
                     Rectangle {
                         id: recButton
+
                         Layout.preferredHeight: 30
                         Layout.preferredWidth: recordingStatusControl.value > 0 ? 76 : 50
-                        radius: 4
-                        color: recordingStatusControl.value > 0 ? "#b71c1c" : (recMouse.pressed ? "#2e2124" : "#222733")
                         border.color: recordingStatusControl.value > 0 ? "#ff5252" : "#374151"
                         border.width: 1
+                        color: recordingStatusControl.value > 0 ? "#b71c1c" : (recMouse.pressed ? "#2e2124" : "#222733")
+                        radius: 4
 
                         RowLayout {
                             anchors.centerIn: parent
                             spacing: 4
 
                             Rectangle {
-                                width: 8
+                                color: recordingStatusControl.value > 0 ? (recBlinkTimer.blink ? "#ff1744" : "#ff8a80") : "#78909c"
                                 height: 8
                                 radius: 4
-                                color: recordingStatusControl.value > 0 ? (recBlinkTimer.blink ? "#ff1744" : "#ff8a80") : "#78909c"
+                                width: 8
                             }
-
                             Text {
-                                text: recordingStatusControl.value > 0 ? recBlinkTimer.recTimeStr : "REC"
+                                color: recordingStatusControl.value > 0 ? "#ffffff" : "#b0bec5"
                                 font.bold: true
                                 font.pixelSize: 10
-                                color: recordingStatusControl.value > 0 ? "#ffffff" : "#b0bec5"
+                                text: recordingStatusControl.value > 0 ? recBlinkTimer.recTimeStr : "REC"
                             }
                         }
-
                         MouseArea {
                             id: recMouse
+
                             anchors.fill: parent
+
                             onClicked: {
                                 recordingToggleControl.trigger();
                             }
                         }
                     }
-
                     Skin.Button {
                         id: editDeckButton
+
                         Layout.preferredHeight: 30
                         Layout.preferredWidth: 42
                         activeColor: Theme.white
@@ -397,9 +431,9 @@ Item {
                         text: "Edit"
                         visible: !root.applicationWindow.isMobile
                     }
-
                     Skin.Button {
                         id: show4DecksButton
+
                         Layout.preferredHeight: 30
                         Layout.preferredWidth: 42
                         activeColor: Theme.white
@@ -410,13 +444,12 @@ Item {
                 }
             }
         }
-
         Skin.EffectRow {
             id: effects
+
             visible: root.showEffects
             width: parent.width
         }
-
         SplitView {
             id: splitView
 
@@ -460,14 +493,17 @@ Item {
             Item {
                 id: waveforms
 
-                readonly property real waveDeckBarHeight: root.viewMode === 3 ? Math.min(115, Math.max(86, Math.round(parent.height * 0.38))) : 0
                 readonly property real scrollingHeight: Math.max(0, height - waveDeckBarHeight)
+                readonly property real waveDeckBarHeight: root.viewMode === 3 ? Math.min(115, Math.max(86, Math.round(parent.height * 0.38))) : 0
 
                 SplitView.fillHeight: root.viewMode === 3
                 SplitView.preferredHeight: {
-                    if (root.viewMode === 3) return splitView.height;
-                    if (root.viewMode === 0) return Math.round(splitView.height * 0.42);
-                    if (root.viewMode === 2 || root.maximizeLibrary) return 0;
+                    if (root.viewMode === 3)
+                        return splitView.height;
+                    if (root.viewMode === 0)
+                        return Math.round(splitView.height * 0.42);
+                    if (root.viewMode === 2 || root.maximizeLibrary)
+                        return 0;
                     return Math.max(80, Math.min(130, Math.round(splitView.height * 0.32)));
                 }
                 visible: root.viewMode !== 2 && !root.maximizeLibrary
@@ -536,9 +572,9 @@ Item {
                         }
                     }
                 }
-
                 WaveDeckBar {
                     id: waveDeckBar
+
                     anchors.bottom: parent.bottom
                     anchors.left: parent.left
                     anchors.right: parent.right
@@ -859,12 +895,31 @@ Item {
                     ]
 
                     anchors {
+                        bottom: parent.bottom
                         left: parent.left
                         right: parent.right
-                        bottom: parent.bottom
                         top: root.viewMode === 0 ? parent.top : mixer.bottom
                     }
                 }
+            }
+        }
+    }
+    Pioneered.PioneeredSkin {
+        id: pioneeredSkin
+
+        anchors.fill: parent
+        enabled: visible && !quickLoadDrawer.opened && !settingsPopup.opened
+        visible: root.isPioneered
+
+        onRequestLegacyPreferences: {
+            Mixxx.PreferencesDialog.show();
+        }
+        onRequestLoadDeck: group => {
+            root.openQuickLoad(group);
+        }
+        onRequestSettings: {
+            if (!settingsPopup.opened) {
+                settingsPopup.open();
             }
         }
     }
@@ -899,7 +954,6 @@ Item {
             }
         }
     }
-
     Skin.QuickLoadDrawer {
         id: quickLoadDrawer
 
@@ -908,14 +962,15 @@ Item {
         x: root.applicationWindow.isMobile ? 0 : Math.round((parent.width - width) / 2)
         y: root.applicationWindow.isMobile ? 0 : Math.round((parent.height - height) / 2)
     }
-
     Skin.XYPad {
         id: xyPadOverlay
-        visible: false
-        z: 90
+
         anchors.centerIn: parent
-        width: Math.min(680, parent.width - 24)
         height: Math.min(380, parent.height - 50)
+        visible: false
+        width: Math.min(680, parent.width - 24)
+        z: 90
+
         onCloseRequested: visible = false
     }
 }
