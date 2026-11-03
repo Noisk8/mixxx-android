@@ -1,0 +1,9 @@
+module Pioneered
+singleton PioneeredTheme 1.0 PioneeredTheme.qml
+PioneeredSkin 1.0 PioneeredSkin.qml
+PioneeredTopbar 1.0 PioneeredTopbar.qml
+PioneeredDeck 1.0 PioneeredDeck.qml
+PioneeredBeatFX 1.0 PioneeredBeatFX.qml
+PioneeredOverviewView 1.0 PioneeredOverviewView.qml
+PioneeredBrowseView 1.0 PioneeredBrowseView.qml
+PioneeredSamplersView 1.0 PioneeredSamplersView.qml
