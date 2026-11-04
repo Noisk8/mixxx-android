@@ -6,9 +6,7 @@ import "Effects" as Effects
 Item {
     id: root
 
-    implicitHeight: columns.implicitHeight > 0 ? columns.implicitHeight : (showFourUnitsControl.value > 0 ? 170 : 85)
-    height: visible ? implicitHeight : 0
-    clip: true
+    implicitHeight: columns.height
 
     Row {
         id: columns

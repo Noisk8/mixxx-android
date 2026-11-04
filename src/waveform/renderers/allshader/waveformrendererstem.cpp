@@ -238,8 +238,9 @@ bool WaveformRendererStem::preprocessInner() {
                     }
                 }
 
-                // Cast to float
-                float max = static_cast<float>(u8max) * allGain;
+                // Cast to float. allGain is in heightFactor already: applied
+                // twice, stem waveforms were drawn far thinner than the others
+                float max = static_cast<float>(u8max);
 
                 // Apply the gains
                 if (layerIdx) {

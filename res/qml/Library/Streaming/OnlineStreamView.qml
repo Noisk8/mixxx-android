@@ -22,9 +22,9 @@ Item {
             root.isBusy = false;
             if (success) {
                 root.tracksModel = tracks;
-                root.statusMessage = tracks.length + " pistas encontradas en Streaming";
+                root.statusMessage = qsTr("%1 tracks found on streaming").arg(tracks.length);
             } else {
-                root.statusMessage = "❌ Error: " + errorString;
+                root.statusMessage = qsTr("❌ Error: %1").arg(errorString);
             }
         }
 
@@ -32,9 +32,9 @@ Item {
             root.isBusy = false;
             if (success) {
                 root.tracksModel = tracks;
-                root.statusMessage = tracks.length + " temas en tendencias (" + root.currentGenre + ")";
+                root.statusMessage = qsTr("%1 trending tracks (%2)").arg(tracks.length).arg(root.currentGenre);
             } else {
-                root.statusMessage = "❌ Error: " + errorString;
+                root.statusMessage = qsTr("❌ Error: %1").arg(errorString);
             }
         }
 
@@ -57,14 +57,14 @@ Item {
                 }
             }
             root.tracksModel = currentTracks;
-            root.statusMessage = "✔ Pista lista y cargada en " + (targetDeck === "[Channel1]" ? "Deck 1" : (targetDeck === "[Channel2]" ? "Deck 2" : "caché"));
+            root.statusMessage = qsTr("✔ Track ready and loaded into %1").arg(targetDeck === "[Channel1]" ? qsTr("Deck 1") : (targetDeck === "[Channel2]" ? qsTr("Deck 2") : qsTr("cache")));
         }
 
         function onDownloadFailed(trackId, errorMessage) {
             var updated = Object.assign({}, root.downloadProgressMap);
             delete updated[trackId];
             root.downloadProgressMap = updated;
-            root.statusMessage = "❌ Error al descargar: " + errorMessage;
+            root.statusMessage = qsTr("❌ Download error: %1").arg(errorMessage);
         }
     }
 
@@ -92,7 +92,7 @@ Item {
                 spacing: 8
 
                 Text {
-                    text: "🔥 AUDIUS STREAMING (MÚSICA LIBRE)"
+                    text: qsTr("🔥 AUDIUS STREAMING (FREE MUSIC)")
                     font.bold: true
                     font.pixelSize: 13
                     font.letterSpacing: 1
@@ -113,7 +113,7 @@ Item {
                         font.pixelSize: 10
                         font.bold: true
                         color: "#00e676"
-                        text: "● Online Libre"
+                        text: qsTr("● Free online")
                     }
                 }
 
@@ -136,7 +136,7 @@ Item {
                     normalColor: "#ffffff"
                     font.bold: true
                     font.pixelSize: 11
-                    text: root.isBusy ? "⟳ Cargando..." : "⟳ Tendencias"
+                    text: root.isBusy ? qsTr("🔄 Loading...") : qsTr("🔄 Trending")
                     enabled: !root.isBusy
                     onClicked: {
                         root.isBusy = true;
@@ -164,7 +164,7 @@ Item {
                     id: searchInput
                     Layout.preferredWidth: 260
                     Layout.preferredHeight: 34
-                    placeholderText: "Buscar temas, remixes, acapellas..."
+                    placeholderText: qsTr("Search tracks, remixes, acapellas...")
                     color: "#ffffff"
                     font.pixelSize: 13
                     background: Rectangle {
@@ -176,7 +176,7 @@ Item {
                     onAccepted: {
                         if (text.trim() !== "") {
                             root.isBusy = true;
-                            root.statusMessage = "Buscando en Audius...";
+                            root.statusMessage = qsTr("Searching Audius...");
                             Mixxx.StreamingManager.searchAudius(text);
                         }
                     }
@@ -205,7 +205,7 @@ Item {
 
                         Repeater {
                             model: [
-                                { name: "🔥 Tendencias", genre: "Electronic" },
+                                { name: qsTr("🔥 Trending"), genre: "Electronic" },
                                 { name: "🎧 Techno", genre: "Techno" },
                                 { name: "🎹 House", genre: "House" },
                                 { name: "🥁 Drum & Bass", genre: "Drum & Bass" },
@@ -236,7 +236,7 @@ Item {
                                         searchInput.text = "";
                                         root.currentGenre = modelData.genre;
                                         root.isBusy = true;
-                                        root.statusMessage = "Cargando tendencias...";
+                                        root.statusMessage = qsTr("Loading trending tracks...");
                                         Mixxx.StreamingManager.getAudiusTrending(modelData.genre);
                                     }
                                 }
@@ -386,7 +386,7 @@ Item {
                                 font.pixelSize: 9
                                 font.bold: true
                                 color: track.isCached ? "#00e676" : "#ff9100"
-                                text: track.isCached ? "💾 Listo" : "☁️ Stream"
+                                text: track.isCached ? qsTr("💾 Ready") : qsTr("☁️ Stream")
                             }
                         }
 
@@ -399,7 +399,8 @@ Item {
                             normalColor: "#ffffff"
                             font.bold: true
                             font.pixelSize: 11
-                            text: "◀ D1"
+                            arrowLeft: true
+                            text: "D1"
                             enabled: !trackDelegate.isDownloading
                             onClicked: {
                                 Mixxx.StreamingManager.downloadAndLoad(
@@ -417,7 +418,8 @@ Item {
                             normalColor: "#ffffff"
                             font.bold: true
                             font.pixelSize: 11
-                            text: "D2 ▶"
+                            arrowRight: true
+                            text: "D2"
                             enabled: !trackDelegate.isDownloading
                             onClicked: {
                                 Mixxx.StreamingManager.downloadAndLoad(
@@ -451,7 +453,7 @@ Item {
                         spacing: 8
 
                         Text {
-                            text: "🔥 Explora música por género o busca cualquier canción o artista"
+                            text: qsTr("🔥 Explore music by genre or search for any track or artist")
                             font.pixelSize: 13
                             color: "#78909c"
                             horizontalAlignment: Text.AlignHCenter
@@ -477,7 +479,7 @@ Item {
                     spacing: 8
 
                     Text {
-                        text: "⟳"
+                        text: "🔄"
                         font.pixelSize: 16
                         color: "#ff9100"
                         RotationAnimation on rotation {
@@ -490,7 +492,7 @@ Item {
                     }
 
                     Text {
-                        text: "Conectando..."
+                        text: qsTr("Connecting...")
                         font.bold: true
                         font.pixelSize: 12
                         color: "#ffffff"

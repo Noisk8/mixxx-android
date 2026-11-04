@@ -6,6 +6,7 @@
 #include <qstringliteral.h>
 #include <qvideosink.h>
 
+#include <QFileInfo>
 #include <QVideoFrame>
 #include <QVideoFrameFormat>
 #include <algorithm>
@@ -339,7 +340,15 @@ QmlControllerDeviceProxy::QmlControllerDeviceProxy(Controller* pInternal,
           m_enabled(pInternal->isOpen()),
           m_pMapping(nullptr) {
     clear();
-    connect(m_pInternal, &Controller::openChanged, this, &QmlControllerDeviceProxy::enabledChanged);
+    // The ControllerManager may open the controller and assign a mapping
+    // after this proxy was created (e.g. hotplug with automatic mapping).
+    connect(m_pInternal, &Controller::openChanged, this, [this]() {
+        if (m_edited) {
+            emit enabledChanged();
+        } else {
+            clear();
+        }
+    });
 }
 
 QmlControllerDeviceProxy::Type QmlControllerDeviceProxy::getType() const {
@@ -434,21 +443,27 @@ void QmlControllerDeviceProxy::clear() {
     m_editedVisualUrl.clear();
     emit visualUrlChanged();
 
+    m_pMapping = nullptr;
     std::shared_ptr<LegacyControllerMapping> pSelectedMapping = m_pInternal->getMapping();
-    for (const auto& pMapping : std::as_const(m_mappings)) {
-        if (pSelectedMapping && pSelectedMapping->filePath() == pMapping->definition().getPath()) {
-            m_pMapping = pMapping;
+    if (pSelectedMapping) {
+        const QString selectedPath = QFileInfo(pSelectedMapping->filePath()).canonicalFilePath();
+        for (const auto& pMapping : std::as_const(m_mappings)) {
+            if (QFileInfo(pMapping->definition().getPath()).canonicalFilePath() == selectedPath) {
+                m_pMapping = pMapping;
+                break;
+            }
+        }
+        // The mapping in use may not match the product (e.g. MIDI mappings,
+        // which have no product information).
+        auto* pManager = qobject_cast<QmlControllerManagerProxy*>(parent());
+        if (!m_pMapping && pManager) {
+            m_pMapping = pManager->findMapping(getType(), selectedPath);
         }
     }
-    if (!m_mappings.isEmpty()) {
+    if (!m_pMapping && !m_mappings.isEmpty()) {
         m_pMapping = *m_mappings.cbegin();
     }
     emit mappingChanged();
-    // FIXME if using a mapping that didn't match the product, we need to fetch
-    // it from COntrollerManager if (pMapping && !m_pMapping){
-    //     m_pMapping = new
-    //     QmlControllerMappingProxy(pMapping->m_productMatches, this);
-    // }
     clearEdited();
 }
 bool QmlControllerDeviceProxy::save(const QmlConfigProxy* pConfig) {
@@ -653,6 +668,11 @@ void QmlControllerManagerProxy::loadMappingFromEnumerator(
 }
 void QmlControllerManagerProxy::loadNewMapping(
         QmlControllerDeviceProxy::Type type, const MappingInfo& mapping) {
+    // Mappings are reloaded on every rescan to pick up newly copied user
+    // mappings; keep the existing proxies, which devices are pointing to.
+    if (findMapping(type, mapping.getPath())) {
+        return;
+    }
     auto* pMapping =
             new QmlControllerMappingProxy(mapping, this);
     updateExistingMapping(pMapping, mapping);
@@ -670,27 +690,95 @@ void QmlControllerManagerProxy::updateExistingMapping(
     }
 }
 void QmlControllerManagerProxy::refreshMappings() {
-    m_knownMappings.insert(QmlControllerDeviceProxy::Type::HID, {});
-    m_knownMappings.insert(QmlControllerDeviceProxy::Type::MIDI, {});
-    m_knownMappings.insert(QmlControllerDeviceProxy::Type::BULK, {});
+    for (const auto type : {QmlControllerDeviceProxy::Type::HID,
+                 QmlControllerDeviceProxy::Type::MIDI,
+                 QmlControllerDeviceProxy::Type::BULK}) {
+        if (!m_knownMappings.contains(type)) {
+            m_knownMappings.insert(type, {});
+        }
+    }
 
     loadMappingFromEnumerator(m_pControllerManager->getMainThreadSystemMappingEnumerator());
     loadMappingFromEnumerator(m_pControllerManager->getMainThreadUserMappingEnumerator());
 }
 
+QmlControllerMappingProxy* QmlControllerManagerProxy::findMapping(
+        QmlControllerDeviceProxy::Type type, const QString& path) const {
+    const QString canonicalPath = QFileInfo(path).canonicalFilePath();
+    if (canonicalPath.isEmpty()) {
+        return nullptr;
+    }
+    const auto mappings = m_knownMappings.value(type);
+    for (auto* pMapping : mappings) {
+        if (QFileInfo(pMapping->definition().getPath()).canonicalFilePath() == canonicalPath) {
+            return pMapping;
+        }
+    }
+    return nullptr;
+}
+
 void QmlControllerManagerProxy::rescan() {
+    // Picks up mappings copied to the user mapping folder since startup
+    refreshMappings();
     if (m_pControllerManager) {
+        // Queued to the ControllerManager thread, which emits devicesChanged
+        // and thereby calls refreshKnownDevices() when done.
         m_pControllerManager->setUpDevices();
     }
-    refreshKnownDevices();
 }
 
 void QmlControllerManagerProxy::refreshKnownDevices() {
     const auto controllers = m_pControllerManager->getControllers();
+
+    // Clean up proxies whose controllers no longer exist
+    for (int i = m_knownDevicesFound.size() - 1; i >= 0; --i) {
+        if (!controllers.contains(m_knownDevicesFound[i]->internal())) {
+            auto* p = m_knownDevicesFound.takeAt(i);
+            p->deleteLater();
+        }
+    }
+    for (int i = m_unknownDevicesFound.size() - 1; i >= 0; --i) {
+        if (!controllers.contains(m_unknownDevicesFound[i]->internal())) {
+            auto* p = m_unknownDevicesFound.takeAt(i);
+            p->deleteLater();
+        }
+    }
+
+    // Clean up known controllers list
+    for (int i = m_knownControllers.size() - 1; i >= 0; --i) {
+        if (!controllers.contains(m_knownControllers[i])) {
+            m_knownControllers.removeAt(i);
+        }
+    }
+
     for (auto* pController : std::as_const(controllers)) {
         if (m_knownControllers.contains(pController)) {
             continue;
         }
+
+        // Also check if we already have a proxy wrapping this controller
+        bool alreadyTracked = false;
+        for (auto* pProxy : m_knownDevicesFound) {
+            if (pProxy->internal() == pController) {
+                alreadyTracked = true;
+                break;
+            }
+        }
+        if (!alreadyTracked) {
+            for (auto* pProxy : m_unknownDevicesFound) {
+                if (pProxy->internal() == pController) {
+                    alreadyTracked = true;
+                    break;
+                }
+            }
+        }
+        if (alreadyTracked) {
+            if (!m_knownControllers.contains(pController)) {
+                m_knownControllers.append(pController);
+            }
+            continue;
+        }
+
         const auto vendor_id = QStringLiteral("0x%1").arg(
                 pController->getVendorId().value_or(0), 4, 16, QChar('0'));
         const auto product_id = QStringLiteral("0x%1").arg(

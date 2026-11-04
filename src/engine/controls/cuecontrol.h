@@ -296,6 +296,9 @@ class CueControl : public EngineControl {
     void detachCue(HotcueControl* pControl);
     void setCurrentSavedLoopControlAndActivate(HotcueControl* pControl);
     void loadCuesFromTrack();
+    // Reloads the cues; a stopped track at its main cue or intro start
+    // follows them
+    void loadCuesFromTrackAndFollow();
     mixxx::audio::FramePos quantizeCuePoint(mixxx::audio::FramePos position);
     mixxx::audio::FramePos getQuantizedCurrentPosition();
     TrackAt getTrackAt() const;

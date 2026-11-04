@@ -14,6 +14,7 @@
 #include "library/trackcollectionmanager.h"
 #include "library/treeitem.h"
 #include "moc_browsefeature.cpp"
+#include "util/removablestorage.h"
 #include "widget/wlibrary.h"
 #include "widget/wlibrarysidebar.h"
 #include "widget/wlibrarytextbrowser.h"
@@ -138,6 +139,11 @@ BrowseFeature::BrowseFeature(
     // Apple hides the base Linux file structure But all devices are mounted at
     // /Volumes
     pRootItem->appendChild(tr("Devices"), "/Volumes/");
+#elif defined(__ANDROID__)
+    // Mixxx Android: the internal storage and the SD cards and USB drives
+    // Android has mounted, by their names, read again each time the node is
+    // opened (onLazyChildExpandation). "/" leads nowhere useful on Android.
+    pRootItem->appendChild(tr("Devices"), DEVICE_NODE);
 #else  // LINUX
     // DEVICE_NODE contents will be rendered lazily in onLazyChildExpandation.
     pRootItem->appendChild(tr("Removable Devices"), DEVICE_NODE);
@@ -393,6 +399,15 @@ std::vector<std::unique_ptr<TreeItem>> createRemovableDevices() {
                 display_path,       // Displays C:
                 drive.filePath())); // Displays C:/
     }
+#elif defined(__ANDROID__)
+    const QList<mixxx::AndroidStorageVolume> volumes = mixxx::androidStorageVolumes();
+    for (const mixxx::AndroidStorageVolume& volume : volumes) {
+        // Named by Android in its language, e.g. "Almacenamiento interno
+        // compartido", "Tarjeta SD SanDisk"
+        ret.push_back(std::make_unique<TreeItem>(
+                volume.name,
+                QVariant(volume.path + QStringLiteral("/"))));
+    }
 #elif defined(__LINUX__)
     QFileInfoList devices;
     for (const QString& path : removableDriveRootPaths()) {
@@ -470,6 +485,13 @@ void BrowseFeature::onLazyChildExpandation(const QModelIndex& index) {
         // This ensures we show the real dir tree. This is relevant when devices
         // were unmounted, changed and mounted again.
         m_pSidebarModel->removeChildDirsFromCache(removableDriveRootPaths());
+#elif defined(__ANDROID__)
+        // As on Linux: a card inserted or changed since shows its real folders
+        QStringList volumePaths;
+        for (const mixxx::AndroidStorageVolume& volume : mixxx::androidStorageVolumes()) {
+            volumePaths.append(volume.path);
+        }
+        m_pSidebarModel->removeChildDirsFromCache(volumePaths);
 #endif
         folders = createRemovableDevices();
     } else {

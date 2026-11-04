@@ -106,7 +106,14 @@ QString DeviceInfo::formatName() const {
     // We include the last 4 digits of the serial number and the
     // interface number to allow the user (and Mixxx!) to keep
     // track of which is which
+#ifdef __ANDROID__
+    // Android only reveals the serial number after USB permission has been
+    // granted, which would change the name (the configuration key) between
+    // sessions.
+    const QString serialSuffix = QStringLiteral("USB");
+#else
     const auto serialSuffix = getSerialNumber().right(4);
+#endif
     if (m_usbInterfaceNumber >= 0) {
         return getProductString() +
                 QChar(' ') +

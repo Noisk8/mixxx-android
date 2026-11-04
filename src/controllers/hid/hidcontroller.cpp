@@ -53,7 +53,7 @@ QString HidController::mappingExtension() {
 }
 
 void HidController::setMapping(std::shared_ptr<LegacyControllerMapping> pMapping) {
-    m_pMutableMapping = pMapping;
+    setMutableMapping(pMapping);
     m_pMapping = downcastAndClone<LegacyHidControllerMapping>(pMapping.get());
 }
 

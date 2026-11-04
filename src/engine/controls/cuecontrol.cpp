@@ -900,12 +900,17 @@ void CueControl::trackCuesUpdated() {
 
 void CueControl::trackBeatsUpdated(mixxx::BeatsPointer pBeats) {
     Q_UNUSED(pBeats);
-    loadCuesFromTrack();
+    // With quantize enabled the cues move with the beats, e.g. after a
+    // beatgrid correction. A stopped track waiting at its cue follows them.
+    loadCuesFromTrackAndFollow();
 }
 
 void CueControl::quantizeChanged(double v) {
     Q_UNUSED(v);
+    loadCuesFromTrackAndFollow();
+}
 
+void CueControl::loadCuesFromTrackAndFollow() {
     // check if we were at the cue point before
     bool wasTrackAtCue = getTrackAt() == TrackAt::Cue;
     bool wasTrackAtIntro = isTrackAtIntroCue();

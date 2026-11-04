@@ -35,9 +35,9 @@ Item {
             if (success) {
                 root.tracksModel = songs;
                 root.activeMode = "search";
-                root.statusMessage = songs.length + " canciones encontradas";
+                root.statusMessage = qsTr("%1 tracks found").arg(songs.length);
             } else {
-                root.statusMessage = "❌ Error: " + errorString;
+                root.statusMessage = qsTr("❌ Error: %1").arg(errorString);
             }
         }
 
@@ -46,9 +46,9 @@ Item {
             if (success) {
                 root.playlistsModel = playlists;
                 root.activeMode = "playlists";
-                root.statusMessage = playlists.length + " listas disponibles";
+                root.statusMessage = qsTr("%1 playlists available").arg(playlists.length);
             } else {
-                root.statusMessage = "❌ Error: " + errorString;
+                root.statusMessage = qsTr("❌ Error: %1").arg(errorString);
             }
         }
 
@@ -57,9 +57,9 @@ Item {
             if (success) {
                 root.tracksModel = songs;
                 root.activeMode = "playlist_tracks";
-                root.statusMessage = songs.length + " pistas en " + root.currentPlaylistName;
+                root.statusMessage = qsTr("%1 tracks in %2").arg(songs.length).arg(root.currentPlaylistName);
             } else {
-                root.statusMessage = "❌ Error: " + errorString;
+                root.statusMessage = qsTr("❌ Error: %1").arg(errorString);
             }
         }
 
@@ -85,14 +85,14 @@ Item {
                 }
             }
             root.tracksModel = currentTracks;
-            root.statusMessage = "✔ Pista lista y cargada en " + (targetDeck === "[Channel1]" ? "Deck 1" : (targetDeck === "[Channel2]" ? "Deck 2" : "caché"));
+            root.statusMessage = qsTr("✔ Track ready and loaded into %1").arg(targetDeck === "[Channel1]" ? qsTr("Deck 1") : (targetDeck === "[Channel2]" ? qsTr("Deck 2") : qsTr("cache")));
         }
 
         function onDownloadFailed(trackId, errorMessage) {
             var updated = Object.assign({}, root.downloadProgressMap);
             delete updated[trackId];
             root.downloadProgressMap = updated;
-            root.statusMessage = "❌ Error al descargar: " + errorMessage;
+            root.statusMessage = qsTr("❌ Download error: %1").arg(errorMessage);
         }
     }
 
@@ -136,7 +136,7 @@ Item {
                         font.pixelSize: 10
                         font.bold: true
                         color: Mixxx.StreamingManager.isSubsonicConnected ? "#00e676" : "#ff5252"
-                        text: Mixxx.StreamingManager.isSubsonicConnected ? "● Conectado" : "● Desconectado"
+                        text: Mixxx.StreamingManager.isSubsonicConnected ? qsTr("● Connected") : qsTr("● Disconnected")
                     }
                 }
 
@@ -158,7 +158,7 @@ Item {
                     backgroundColor: root.showSettings ? "#0097a7" : "#2a3040"
                     normalColor: "#ffffff"
                     font.bold: true
-                    text: root.showSettings ? "▲ Ocultar" : "⚙ Ajustes"
+                    text: root.showSettings ? qsTr("▲ Hide") : qsTr("⚙ Settings")
                     onClicked: root.showSettings = !root.showSettings
                 }
             }
@@ -193,7 +193,7 @@ Item {
                         id: serverUrlField
                         Layout.fillWidth: true
                         Layout.preferredHeight: 34
-                        placeholderText: "URL del servidor (ej. http://192.168.1.50:4533)"
+                        placeholderText: qsTr("Server URL (e.g. http://192.168.1.50:4533)")
                         text: Mixxx.StreamingManager.subsonicUrl
                         color: "#ffffff"
                         font.pixelSize: 12
@@ -210,7 +210,7 @@ Item {
                         id: userField
                         Layout.preferredWidth: 130
                         Layout.preferredHeight: 34
-                        placeholderText: "Usuario"
+                        placeholderText: qsTr("Username")
                         text: Mixxx.StreamingManager.subsonicUsername
                         color: "#ffffff"
                         font.pixelSize: 12
@@ -227,7 +227,7 @@ Item {
                         id: passField
                         Layout.preferredWidth: 130
                         Layout.preferredHeight: 34
-                        placeholderText: "Contraseña"
+                        placeholderText: qsTr("Password")
                         echoMode: TextInput.Password
                         text: Mixxx.StreamingManager.subsonicPassword
                         color: "#ffffff"
@@ -248,14 +248,14 @@ Item {
                         backgroundColor: "#00897b"
                         normalColor: "#ffffff"
                         font.bold: true
-                        text: root.isBusy ? "⟳ Conectando" : "✔ Conectar"
+                        text: root.isBusy ? qsTr("🔄 Connecting") : qsTr("✔ Connect")
                         enabled: !root.isBusy
                         onClicked: {
                             Mixxx.StreamingManager.subsonicUrl = serverUrlField.text;
                             Mixxx.StreamingManager.subsonicUsername = userField.text;
                             Mixxx.StreamingManager.subsonicPassword = passField.text;
                             root.isBusy = true;
-                            root.statusMessage = "Conectando al servidor...";
+                            root.statusMessage = qsTr("Connecting to the server...");
                             Mixxx.StreamingManager.testSubsonicConnection();
                         }
                     }
@@ -266,7 +266,7 @@ Item {
                     spacing: 8
 
                     Text {
-                        text: "💡 Compatible con Navidrome, Funkwhale, Ampache, Subsonic, Airsonic y Nextcloud Music."
+                        text: qsTr("💡 Compatible with Navidrome, Funkwhale, Ampache, Subsonic, Airsonic and Nextcloud Music.")
                         font.pixelSize: 11
                         color: "#78909c"
                         Layout.fillWidth: true
@@ -278,10 +278,10 @@ Item {
                         backgroundColor: "#262b36"
                         normalColor: "#90a4ae"
                         font.pixelSize: 10
-                        text: "🧹 Limpiar Caché"
+                        text: qsTr("🧹 Clear cache")
                         onClicked: {
                             Mixxx.StreamingManager.clearCache();
-                            root.statusMessage = "Caché de streaming vaciado";
+                            root.statusMessage = qsTr("Streaming cache cleared");
                         }
                     }
                 }
@@ -308,7 +308,7 @@ Item {
                     backgroundColor: root.activeMode === "search" ? "#006064" : "#222733"
                     normalColor: "#ffffff"
                     font.bold: true
-                    text: "🔍 Buscar"
+                    text: qsTr("🔍 Search")
                     onClicked: {
                         root.activeMode = "search";
                         if (searchInput.text.trim() !== "") {
@@ -325,7 +325,7 @@ Item {
                     backgroundColor: root.activeMode === "playlists" ? "#006064" : "#222733"
                     normalColor: "#ffffff"
                     font.bold: true
-                    text: "📜 Playlists"
+                    text: qsTr("📜 Playlists")
                     onClicked: {
                         root.isBusy = true;
                         Mixxx.StreamingManager.getSubsonicPlaylists();
@@ -337,7 +337,7 @@ Item {
                     id: searchInput
                     Layout.fillWidth: true
                     Layout.preferredHeight: 34
-                    placeholderText: "Buscar artistas, temas, o álbumes en tu nube..."
+                    placeholderText: qsTr("Search artists, tracks or albums in your cloud...")
                     color: "#ffffff"
                     font.pixelSize: 13
                     background: Rectangle {
@@ -349,7 +349,7 @@ Item {
                     onAccepted: {
                         if (text.trim() !== "") {
                             root.isBusy = true;
-                            root.statusMessage = "Buscando...";
+                            root.statusMessage = qsTr("Searching...");
                             Mixxx.StreamingManager.searchSubsonic(text);
                         }
                     }
@@ -385,7 +385,8 @@ Item {
                     backgroundColor: "#2e4053"
                     normalColor: "#ffffff"
                     font.bold: true
-                    text: "◀ Volver"
+                    arrowLeft: true
+                    text: qsTr("Back")
                     onClicked: root.activeMode = "playlists"
                 }
 
@@ -539,7 +540,7 @@ Item {
                                 font.pixelSize: 9
                                 font.bold: true
                                 color: song.isCached ? "#00e676" : "#0288d1"
-                                text: song.isCached ? "💾 Listo" : "☁️ Nube"
+                                text: song.isCached ? qsTr("💾 Ready") : qsTr("☁️ Cloud")
                             }
                         }
 
@@ -552,7 +553,8 @@ Item {
                             normalColor: "#ffffff"
                             font.bold: true
                             font.pixelSize: 11
-                            text: "◀ D1"
+                            arrowLeft: true
+                            text: "D1"
                             enabled: !trackDelegate.isDownloading
                             onClicked: {
                                 Mixxx.StreamingManager.downloadAndLoad(
@@ -570,7 +572,8 @@ Item {
                             normalColor: "#ffffff"
                             font.bold: true
                             font.pixelSize: 11
-                            text: "D2 ▶"
+                            arrowRight: true
+                            text: "D2"
                             enabled: !trackDelegate.isDownloading
                             onClicked: {
                                 Mixxx.StreamingManager.downloadAndLoad(
@@ -605,8 +608,8 @@ Item {
 
                         Text {
                             text: Mixxx.StreamingManager.isSubsonicConnected
-                                ? "🔍 Escribe un artista, título o álbum para buscar en tu servidor"
-                                : "☁️ Conecta tu servidor Navidrome / Subsonic en Ajustes arriba"
+                                ? qsTr("🔍 Type an artist, title or album to search your server")
+                                : qsTr("☁️ Connect your Navidrome / Subsonic server in the settings above")
                             font.pixelSize: 13
                             color: "#78909c"
                             horizontalAlignment: Text.AlignHCenter
@@ -662,7 +665,7 @@ Item {
                             }
 
                             Text {
-                                text: modelData.songCount + " pistas"
+                                text: qsTr("%1 tracks").arg(modelData.songCount)
                                 font.pixelSize: 11
                                 color: "#90a4ae"
                             }
@@ -676,11 +679,12 @@ Item {
                             normalColor: "#ffffff"
                             font.bold: true
                             font.pixelSize: 11
-                            text: "Ver Pistas ▶"
+                            arrowRight: true
+                            text: qsTr("Show tracks")
                             onClicked: {
                                 root.currentPlaylistName = modelData.name;
                                 root.isBusy = true;
-                                root.statusMessage = "Cargando " + modelData.name + "...";
+                                root.statusMessage = qsTr("Loading %1...").arg(modelData.name);
                                 Mixxx.StreamingManager.getSubsonicPlaylistSongs(modelData.id);
                             }
                         }
@@ -704,7 +708,7 @@ Item {
                     spacing: 8
 
                     Text {
-                        text: "⟳"
+                        text: "🔄"
                         font.pixelSize: 16
                         color: "#00e5ff"
                         RotationAnimation on rotation {
@@ -717,7 +721,7 @@ Item {
                     }
 
                     Text {
-                        text: "Cargando..."
+                        text: qsTr("Loading...")
                         font.bold: true
                         font.pixelSize: 12
                         color: "#ffffff"

@@ -3,6 +3,9 @@
 #include <qlogging.h>
 
 #include <QLibrary>
+#ifdef Q_OS_ANDROID
+#include "soundio/soundmanagerandroid.h"
+#endif
 #include <QThread>
 #include <QtGlobal>
 #include <cstring> // for memcpy and strcmp
@@ -85,15 +88,11 @@ SoundManager::SoundManager(
 
     queryDevices();
 
-#if defined(Q_OS_ANDROID)
-    if (!m_config.readFromDisk() || m_config.getOutputs().isEmpty()) {
-        m_config.loadDefaults(this, SoundManagerConfig::API | SoundManagerConfig::DEVICES | SoundManagerConfig::OTHER);
-        m_config.writeToDisk();
-    }
-#else
     if (!m_config.readFromDisk()) {
         m_config.loadDefaults(this, SoundManagerConfig::API | SoundManagerConfig::OTHER);
     }
+#ifdef Q_OS_ANDROID
+    m_pAndroid = new SoundManagerAndroid(this);
 #endif
 
     if (!isPipewireSelected()) {
@@ -328,14 +327,10 @@ SoundDeviceStatus SoundManager::setupDevices() {
     SoundDevicePointer pNewMainClockRef;
 
     m_audioLatencyOverloadCount.set(0);
-
-#if defined(Q_OS_ANDROID)
-    if (m_config.getOutputs().isEmpty()) {
-        qWarning() << "SoundManager on Android: No outputs configured in SoundManagerConfig. Loading defaults...";
-        m_config.loadDefaults(this, SoundManagerConfig::API | SoundManagerConfig::DEVICES | SoundManagerConfig::OTHER);
-        m_config.writeToDisk();
-    }
+#ifdef Q_OS_ANDROID
+    m_pAndroid->prepareSetup();
 #endif
+
     // load with all configured devices.
     // all found devices are removed below
     QSet<SoundDeviceId> devicesNotFound = m_config.getDevices();
@@ -434,12 +429,20 @@ SoundDeviceStatus SoundManager::setupDevices() {
         // Don't use network clock unless forced with PipeWire
         // as PipeWire callbacks run even without any devices configured
         const bool isNetworkDevice = pDevice->getDeviceId().name == kNetworkDeviceInternalName;
+#ifdef Q_OS_ANDROID
+        // Without PipeWire the network device would become the clock
+        // reference, and the fallback output that SoundManagerAndroid opens
+        // when no physical output works would drive the engine as well.
+        const bool deviceAllowedClockReference =
+                isPipewireSelected() != isNetworkDevice && !isNetworkDevice;
+#else
         const bool deviceAllowedClockReference = isPipewireSelected() != isNetworkDevice;
+#endif
 
         // If we have not yet set a clock source then we use the first
-        // output pDevice (preferring real physical devices over network stream)
+        // output pDevice
         if (pNewMainClockRef.isNull() &&
-                (!haveOutput || mode.isOutput) && deviceAllowedClockReference && !isNetworkDevice) {
+                (!haveOutput || mode.isOutput) && deviceAllowedClockReference) {
             pNewMainClockRef = pDevice;
             qWarning() << "Output sound device clock reference not set! Using"
                        << pDevice->getDisplayName();
@@ -453,6 +456,12 @@ SoundDeviceStatus SoundManager::setupDevices() {
         }
         status = pDevice->open(pNewMainClockRef == pDevice, syncBuffers);
         if (status != SoundDeviceStatus::Ok) {
+#ifdef Q_OS_ANDROID
+            if (m_pAndroid->skipFailedDevice(pDevice, &pNewMainClockRef)) {
+                status = SoundDeviceStatus::Ok;
+                continue;
+            }
+#endif
             goto closeAndError;
         }
         devicesNotFound.remove(pDevice->getDeviceId());
@@ -464,52 +473,9 @@ SoundDeviceStatus SoundManager::setupDevices() {
         }
     }
 
-#if defined(Q_OS_ANDROID)
-    if (!haveOutput) {
-        qWarning() << "SoundManager on Android: No physical output device opened! Forcing first available output device...";
-        SoundDevicePointer targetDevice;
-        for (const auto& pDevice : devices) {
-            if (pDevice && pDevice->getNumOutputChannels() > 0 && pDevice->getDeviceId().name != kNetworkDeviceInternalName) {
-                if (pDevice->getDisplayName().contains(QStringLiteral("earpiece"), Qt::CaseInsensitive)) {
-                    continue;
-                }
-                if (pDevice->getHostAPI().contains(QStringLiteral("Oboe"), Qt::CaseInsensitive)) {
-                    targetDevice = pDevice;
-                    break;
-                }
-                if (!targetDevice) {
-                    targetDevice = pDevice;
-                }
-            }
-        }
-
-        if (targetDevice) {
-            const auto channelCount = targetDevice->getNumOutputChannels() >= 2
-                    ? mixxx::audio::ChannelCount::stereo()
-                    : mixxx::audio::ChannelCount::mono();
-            AudioOutput forcedOut(AudioPathType::Main, 0, channelCount, 0);
-            auto pSource = m_registeredSources.value(forcedOut);
-            const CSAMPLE* pBuffer = pSource ? pSource->buffer(forcedOut).data() : nullptr;
-            if (pBuffer) {
-                targetDevice->clearOutputs();
-                AudioOutputBuffer aob(forcedOut, pBuffer);
-                targetDevice->addOutput(aob);
-                targetDevice->setSampleRate(m_config.getSampleRate());
-                targetDevice->setConfigFramesPerBuffer(m_config.getFramesPerBuffer());
-                if (targetDevice->open(true, m_config.getSyncBuffers()) == SoundDeviceStatus::Ok) {
-                    pNewMainClockRef = targetDevice;
-                    ++outputDevicesOpened;
-                    haveOutput = true;
-                    devicesNotFound.remove(targetDevice->getDeviceId());
-                    qInfo() << "Successfully opened fallback Android audio device:" << targetDevice->getDisplayName();
-                    m_config.addOutput(targetDevice->getDeviceId(), forcedOut);
-                    m_config.writeToDisk();
-                }
-            }
-        }
-    }
+#ifdef Q_OS_ANDROID
+    m_pAndroid->finishSetup(devices, &pNewMainClockRef, &outputDevicesOpened, &devicesNotFound);
 #endif
-
     if (pNewMainClockRef) {
         qDebug() << "Using" << pNewMainClockRef->getDisplayName()
                  << "as output sound device clock reference";

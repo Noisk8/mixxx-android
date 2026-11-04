@@ -4,6 +4,9 @@
 #include <QQmlEngine>
 
 #include "mixer/basetrackplayer.h"
+#ifdef __ANDROID_USB_DRIVE__
+#include "library/usbdrive/androidusbdrive.h"
+#endif
 #include "moc_qmlplayerproxy.cpp"
 #include "qmltrackproxy.h"
 #include "track/track.h"
@@ -49,7 +52,14 @@ void QmlPlayerProxy::loadTrackFromLocation(const QString& trackLocation, bool pl
     if (m_pCurrentTrack && m_pCurrentTrack->getLocation() == trackLocation) {
         return;
     }
+#ifdef __ANDROID_USB_DRIVE__
+    // Tracks of USB drives that Mixxx reads itself are copied first
+    mixxx::usbdrive::fetchTrack(trackLocation, this, [this, trackLocation, play]() {
+        emit loadTrackFromLocationRequested(trackLocation, play);
+    });
+#else
     emit loadTrackFromLocationRequested(trackLocation, play);
+#endif
 }
 
 void QmlPlayerProxy::loadTrackFromLocationUrl(const QUrl& trackLocationUrl, bool play) {

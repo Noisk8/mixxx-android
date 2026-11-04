@@ -178,7 +178,7 @@ QString QmlStreamingProxy::getSubsonicCoverArtUrl(const QString& coverArtId, int
 void QmlStreamingProxy::testSubsonicConnection() {
     const QString urlStr = buildSubsonicUrl(QStringLiteral("ping"));
     if (urlStr.isEmpty()) {
-        emit subsonicConnectionTested(false, QStringLiteral("URL del servidor vacía"), QString());
+        emit subsonicConnectionTested(false, tr("The server URL is empty"), QString());
         return;
     }
 
@@ -210,12 +210,12 @@ void QmlStreamingProxy::testSubsonicConnection() {
             }
             m_subsonicServerVersion = version;
             emit subsonicConnectionChanged();
-            emit subsonicConnectionTested(true, QStringLiteral("¡Conexión establecida con éxito!"), version);
+            emit subsonicConnectionTested(true, tr("Connection established successfully!"), version);
         } else {
             m_isSubsonicConnected = false;
             emit subsonicConnectionChanged();
             QJsonObject err = resp.value(QStringLiteral("error")).toObject();
-            QString msg = err.value(QStringLiteral("message")).toString(QStringLiteral("Error de autenticación o servidor"));
+            QString msg = err.value(QStringLiteral("message")).toString(tr("Authentication or server error"));
             emit subsonicConnectionTested(false, msg, QString());
         }
     });
@@ -230,7 +230,7 @@ void QmlStreamingProxy::searchSubsonic(const QString& query) {
     const QString extra = QStringLiteral("query=") + QString::fromUtf8(QUrl::toPercentEncoding(query.trimmed()));
     const QString urlStr = buildSubsonicUrl(QStringLiteral("search3"), extra);
     if (urlStr.isEmpty()) {
-        emit subsonicSearchFinished(false, QVariantList(), QStringLiteral("Configura la URL de Navidrome/Subsonic"));
+        emit subsonicSearchFinished(false, QVariantList(), tr("Set up the Navidrome/Subsonic URL"));
         return;
     }
 
@@ -258,8 +258,8 @@ void QmlStreamingProxy::searchSubsonic(const QString& query) {
             QVariantMap item;
             QString id = song.value(QStringLiteral("id")).toString();
             item[QStringLiteral("id")] = id;
-            item[QStringLiteral("title")] = song.value(QStringLiteral("title")).toString(QStringLiteral("Sin título"));
-            item[QStringLiteral("artist")] = song.value(QStringLiteral("artist")).toString(QStringLiteral("Artista desconocido"));
+            item[QStringLiteral("title")] = song.value(QStringLiteral("title")).toString(tr("Untitled"));
+            item[QStringLiteral("artist")] = song.value(QStringLiteral("artist")).toString(tr("Unknown artist"));
             item[QStringLiteral("album")] = song.value(QStringLiteral("album")).toString();
             item[QStringLiteral("duration")] = song.value(QStringLiteral("duration")).toInt();
             item[QStringLiteral("suffix")] = song.value(QStringLiteral("suffix")).toString(QStringLiteral("mp3")).toUpper();
@@ -280,7 +280,7 @@ void QmlStreamingProxy::searchSubsonic(const QString& query) {
 void QmlStreamingProxy::getSubsonicPlaylists() {
     const QString urlStr = buildSubsonicUrl(QStringLiteral("getPlaylists"));
     if (urlStr.isEmpty()) {
-        emit subsonicPlaylistsFinished(false, QVariantList(), QStringLiteral("Configura la URL de Navidrome/Subsonic"));
+        emit subsonicPlaylistsFinished(false, QVariantList(), tr("Set up the Navidrome/Subsonic URL"));
         return;
     }
 
@@ -321,7 +321,7 @@ void QmlStreamingProxy::getSubsonicPlaylistSongs(const QString& playlistId) {
     const QString extra = QStringLiteral("id=") + playlistId;
     const QString urlStr = buildSubsonicUrl(QStringLiteral("getPlaylist"), extra);
     if (urlStr.isEmpty()) {
-        emit subsonicPlaylistSongsFinished(false, QVariantList(), QStringLiteral("Configura la URL de Navidrome/Subsonic"));
+        emit subsonicPlaylistSongsFinished(false, QVariantList(), tr("Set up the Navidrome/Subsonic URL"));
         return;
     }
 
@@ -349,8 +349,8 @@ void QmlStreamingProxy::getSubsonicPlaylistSongs(const QString& playlistId) {
             QVariantMap item;
             QString id = song.value(QStringLiteral("id")).toString();
             item[QStringLiteral("id")] = id;
-            item[QStringLiteral("title")] = song.value(QStringLiteral("title")).toString(QStringLiteral("Sin título"));
-            item[QStringLiteral("artist")] = song.value(QStringLiteral("artist")).toString(QStringLiteral("Artista desconocido"));
+            item[QStringLiteral("title")] = song.value(QStringLiteral("title")).toString(tr("Untitled"));
+            item[QStringLiteral("artist")] = song.value(QStringLiteral("artist")).toString(tr("Unknown artist"));
             item[QStringLiteral("album")] = song.value(QStringLiteral("album")).toString();
             item[QStringLiteral("duration")] = song.value(QStringLiteral("duration")).toInt();
             item[QStringLiteral("suffix")] = song.value(QStringLiteral("suffix")).toString(QStringLiteral("mp3")).toUpper();
@@ -402,8 +402,8 @@ void QmlStreamingProxy::searchAudius(const QString& query) {
             }
             QVariantMap item;
             item[QStringLiteral("id")] = id;
-            item[QStringLiteral("title")] = t.value(QStringLiteral("title")).toString(QStringLiteral("Pista Audius"));
-            item[QStringLiteral("artist")] = user.value(QStringLiteral("name")).toString(QStringLiteral("Artista Audius"));
+            item[QStringLiteral("title")] = t.value(QStringLiteral("title")).toString(tr("Audius track"));
+            item[QStringLiteral("artist")] = user.value(QStringLiteral("name")).toString(tr("Audius artist"));
             item[QStringLiteral("duration")] = t.value(QStringLiteral("duration")).toInt();
             item[QStringLiteral("genre")] = t.value(QStringLiteral("genre")).toString(QStringLiteral("Electronic"));
             item[QStringLiteral("bpm")] = t.value(QStringLiteral("bpm")).toDouble(126.0);
@@ -455,8 +455,8 @@ void QmlStreamingProxy::getAudiusTrending(const QString& genre) {
             }
             QVariantMap item;
             item[QStringLiteral("id")] = id;
-            item[QStringLiteral("title")] = t.value(QStringLiteral("title")).toString(QStringLiteral("Pista Audius"));
-            item[QStringLiteral("artist")] = user.value(QStringLiteral("name")).toString(QStringLiteral("Artista Audius"));
+            item[QStringLiteral("title")] = t.value(QStringLiteral("title")).toString(tr("Audius track"));
+            item[QStringLiteral("artist")] = user.value(QStringLiteral("name")).toString(tr("Audius artist"));
             item[QStringLiteral("duration")] = t.value(QStringLiteral("duration")).toInt();
             item[QStringLiteral("genre")] = t.value(QStringLiteral("genre")).toString(QStringLiteral("Electronic"));
             item[QStringLiteral("bpm")] = t.value(QStringLiteral("bpm")).toDouble(126.0);
@@ -512,7 +512,7 @@ void QmlStreamingProxy::downloadAndLoad(
         const QString& targetDeck,
         bool autoPlay) {
     if (streamUrl.isEmpty() || trackId.isEmpty()) {
-        emit downloadFailed(trackId, QStringLiteral("URL o ID de pista no válidos"));
+        emit downloadFailed(trackId, tr("Invalid URL or track ID"));
         return;
     }
 
@@ -558,7 +558,7 @@ void QmlStreamingProxy::downloadAndLoad(
 
     auto pFile = std::make_shared<QFile>(partPath);
     if (!pFile->open(QIODevice::WriteOnly)) {
-        emit downloadFailed(trackId, QStringLiteral("No se puede crear el archivo temporal en caché"));
+        emit downloadFailed(trackId, tr("Cannot create the temporary cache file"));
         return;
     }
 
@@ -629,7 +629,7 @@ void QmlStreamingProxy::downloadAndLoad(
         // Rename part file to final file
         QFile::remove(finalPath);
         if (!QFile::rename(partPath, finalPath)) {
-            emit downloadFailed(trackId, QStringLiteral("No se pudo guardar la pista descargada"));
+            emit downloadFailed(trackId, tr("Could not save the downloaded track"));
             return;
         }
 

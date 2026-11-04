@@ -12,6 +12,8 @@
 #include <hidapi.h>
 #endif
 
+#include <QSet>
+
 #include "controllers/hid/hidcontroller.h"
 #include "controllers/hid/hiddenylist.h"
 #include "moc_hidenumerator.cpp"
@@ -122,6 +124,9 @@ HidEnumerator::~HidEnumerator() {
     while (m_devices.size() > 0) {
         delete m_devices.takeLast();
     }
+#ifdef __ANDROID__
+    qDeleteAll(m_removedDevices);
+#endif
     hid_exit();
 }
 
@@ -153,7 +158,9 @@ QList<Controller*> HidEnumerator::queryDevices() {
             "found %d USB devices for HID enumerator",
             deviceList.size());
 
+    QSet<QString> presentKeys;
     for (const auto& usbDevice : deviceList) {
+        const QString usbDeviceName = usbDevice->callMethod<jstring>("getDeviceName").toString();
         for (jint ifaceIdx = 0;
                 ifaceIdx < usbDevice->callMethod<jint>("getInterfaceCount");
                 ifaceIdx++) {
@@ -176,10 +183,28 @@ QList<Controller*> HidEnumerator::queryDevices() {
                     continue;
                 }
 
+                const QString key = QStringLiteral("%1#%2").arg(
+                        usbDeviceName, QString::number(ifaceIdx));
+                presentKeys.insert(key);
+                if (m_androidDevicesByKey.contains(key)) {
+                    continue;
+                }
+
                 HidController* newDevice = new HidController(std::move(deviceInfo));
+                m_androidDevicesByKey.insert(key, newDevice);
                 m_devices.push_back(newDevice);
             }
         }
+    }
+    // ControllerManager closes controllers that disappeared from the list
+    for (auto it = m_androidDevicesByKey.begin(); it != m_androidDevicesByKey.end();) {
+        if (presentKeys.contains(it.key())) {
+            ++it;
+            continue;
+        }
+        m_devices.removeAll(it.value());
+        m_removedDevices.append(it.value());
+        it = m_androidDevicesByKey.erase(it);
     }
 #else
 

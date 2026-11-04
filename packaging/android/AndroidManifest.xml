@@ -1,12 +1,11 @@
 <?xml version="1.0"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="org.mixxx"
-    android:installLocation="auto"
-    android:versionCode="-- %%INSERT_VERSION_CODE%% --"
-    android:versionName="-- %%INSERT_VERSION_NAME%% --">
+    android:installLocation="internalOnly"
+    android:versionCode="19"
+    android:versionName="0.9.0 (Otto Mann)">
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"  />
     <uses-permission android:name="android.permission.INTERNET"  />
-    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO"/>
     <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE"/>
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS"  />
     <uses-permission android:name="android.permission.RECORD_AUDIO"  />
@@ -14,6 +13,11 @@
     <uses-permission android:name="android.permission.WAKE_LOCK"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"/>
+    <!-- Updates of Mixxx downloaded from its GitHub releases (Settings → About) -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES"/>
+    <!-- Separating tracks into stems in the background, see StemsService.java -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC"/>
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
         android:maxSdkVersion="29" />
     <!-- Reading the music collection. Up to Android 12 this is covered by
@@ -23,6 +27,7 @@
          arbitrary directories. -->
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
         android:maxSdkVersion="32" />
+    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
 
     <supports-screens
         android:anyDensity="true"
@@ -31,6 +36,9 @@
         android:smallScreens="true"
         android:xlargeScreens="true"
         android:resizeable="true" />
+    <!-- requestLegacyExternalStorage: only Android 10 uses it. Without it,
+         Android 10 limits apps targeting it to their own files, and the
+         music folders couldn't be read by their paths. -->
     <application
         android:name="org.qtproject.qt.android.bindings.QtApplication"
         android:hardwareAccelerated="true"
@@ -38,8 +46,7 @@
         android:label="Mixxx"
         android:theme="@android:style/Theme.NoTitleBar.Fullscreen"
         android:requestLegacyExternalStorage="true"
-        android:allowBackup="true"
-        android:fullBackupOnly="false"
+        android:allowBackup="false"
         android:extractNativeLibs="false">
         <activity
             android:name="org.mixxx.MainActivity"
@@ -74,8 +81,12 @@
 
           <meta-data
                 android:name="android.app.arguments"
-                android:value="--log-level debug" />
+                android:value="--new-ui" />
         </activity>
+        <service
+            android:name="org.mixxx.StemsService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
 
         <provider
             android:name="androidx.core.content.FileProvider"
@@ -94,6 +105,9 @@
          installation entirely. -->
     <uses-feature
         android:name="android.hardware.usb.host"
+        android:required="false" />
+    <uses-feature
+        android:name="android.software.midi"
         android:required="false" />
     <!-- Chromebooks may be operated with mouse and keyboard only. -->
     <uses-feature

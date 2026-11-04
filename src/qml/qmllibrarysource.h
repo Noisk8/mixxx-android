@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QAbstractItemModel>
+#include <QCoreApplication>
 #include <QObject>
 #include <QQmlEngine>
 #include <QQmlListProperty>
@@ -29,7 +30,8 @@ class AllTrackLibraryFeature final : public LibraryFeature {
     ~AllTrackLibraryFeature() override = default;
 
     QVariant title() override {
-        return tr("All...");
+        // Reuse the translation of the library's own track list
+        return QCoreApplication::translate("MixxxLibraryFeature", "Tracks");
     }
     TreeItemModel* sidebarModel() const override {
         return m_pSidebarModel;

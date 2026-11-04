@@ -354,6 +354,9 @@ class QmlControllerManagerProxy : public QObject {
         return m_knownMappings.value(type);
     }
 
+    QmlControllerMappingProxy* findMapping(
+            QmlControllerDeviceProxy::Type type, const QString& path) const;
+
     Q_INVOKABLE void rescan();
 
     static QmlControllerManagerProxy* create(QQmlEngine* pQmlEngine, QJSEngine* pJsEngine);

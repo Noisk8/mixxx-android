@@ -54,7 +54,7 @@ Item {
                         normalColor: root.activePlatform === 1 ? "#ea80fc" : "#e1bee7"
                         font.bold: true
                         font.pixelSize: 11
-                        text: "🔥 AUDIUS (Libre)"
+                        text: qsTr("🔥 AUDIUS (free)")
                         onClicked: root.activePlatform = 1
                     }
 
@@ -66,7 +66,7 @@ Item {
                         normalColor: root.activePlatform === 2 ? "#ffb300" : "#ffe082"
                         font.bold: true
                         font.pixelSize: 11
-                        text: "🔗 URL DIRECTA / RADIO"
+                        text: qsTr("🔗 DIRECT URL / RADIO")
                         onClicked: root.activePlatform = 2
                     }
                 }
@@ -88,7 +88,7 @@ Item {
                         spacing: 4
 
                         Text {
-                            text: "Destino:"
+                            text: qsTr("Target:")
                             color: "#b0bec5"
                             font.pixelSize: 10
                         }

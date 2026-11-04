@@ -4,6 +4,9 @@
 
 #include "library/library.h"
 #include "library/library_prefs.h"
+#ifdef __ANDROID_USB_DRIVE__
+#include "library/usbdrive/androidusbdrive.h"
+#endif
 #include "mixer/playermanager.h"
 #include "moc_qmlplayermanagerproxy.cpp"
 #include "qml/qmlconfigproxy.h"
@@ -75,7 +78,14 @@ QmlPlayerProxy* QmlPlayerManagerProxy::getPlayer(const QString& group) {
 
 void QmlPlayerManagerProxy::loadLocationIntoNextAvailableDeck(
         const QString& trackLocation, bool play) {
+#ifdef __ANDROID_USB_DRIVE__
+    // Tracks of USB drives that Mixxx reads itself are copied first
+    mixxx::usbdrive::fetchTrack(trackLocation, this, [this, trackLocation, play]() {
+        m_pPlayerManager->slotLoadLocationIntoNextAvailableDeck(trackLocation, play);
+    });
+#else
     m_pPlayerManager->slotLoadLocationIntoNextAvailableDeck(trackLocation, play);
+#endif
 }
 
 void QmlPlayerManagerProxy::loadLocationUrlIntoNextAvailableDeck(
@@ -94,9 +104,18 @@ void QmlPlayerManagerProxy::loadLocationUrlToDeck(
                    << "is not a local file!";
         return;
     }
-    mixxx::FileInfo fileInfo(locationUrl.toLocalFile());
-    Sandbox::createSecurityToken(&fileInfo);
-    m_pPlayerManager->slotLoadToDeck(fileInfo.location(), deck);
+    const QString location = locationUrl.toLocalFile();
+    auto load = [this, location, deck]() {
+        mixxx::FileInfo fileInfo(location);
+        Sandbox::createSecurityToken(&fileInfo);
+        m_pPlayerManager->slotLoadToDeck(fileInfo.location(), deck);
+    };
+#ifdef __ANDROID_USB_DRIVE__
+    // Tracks of USB drives that Mixxx reads itself are copied first
+    mixxx::usbdrive::fetchTrack(location, this, load);
+#else
+    load();
+#endif
 }
 
 void QmlPlayerManagerProxy::loadLocationToPlayer(

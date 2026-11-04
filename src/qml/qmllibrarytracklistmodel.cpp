@@ -2,6 +2,7 @@
 
 #include <qnamespace.h>
 
+#include <QAbstractProxyModel>
 #include <QObject>
 #include <QQmlEngine>
 #include <QSortFilterProxyModel>
@@ -9,6 +10,7 @@
 #include <QVariant>
 
 #include "library/basetracktablemodel.h"
+#include "library/browse/browsetablemodel.h"
 #include "library/columncache.h"
 #include "moc_qmllibrarytracklistmodel.cpp"
 #include "qml/asyncimageprovider.h"
@@ -39,7 +41,54 @@ QColor colorFromRgbCode(double colorValue) {
     QRgb rgbValue = static_cast<QRgb>(colorValue) | 0xFF000000;
     return QColor(rgbValue);
 }
+
+/// The folder browser has its own fixed columns
+int browseColumn(int column) {
+    switch (static_cast<ColumnCache::Column>(column)) {
+    case ColumnCache::COLUMN_LIBRARYTABLE_ALBUM:
+        return COLUMN_ALBUM;
+    case ColumnCache::COLUMN_LIBRARYTABLE_ARTIST:
+        return COLUMN_ARTIST;
+    case ColumnCache::COLUMN_LIBRARYTABLE_TITLE:
+        return COLUMN_TITLE;
+    case ColumnCache::COLUMN_LIBRARYTABLE_YEAR:
+        return COLUMN_YEAR;
+    case ColumnCache::COLUMN_LIBRARYTABLE_BPM:
+        return COLUMN_BPM;
+    case ColumnCache::COLUMN_LIBRARYTABLE_KEY:
+        return COLUMN_KEY;
+    case ColumnCache::COLUMN_LIBRARYTABLE_FILETYPE:
+        return COLUMN_TYPE;
+    case ColumnCache::COLUMN_LIBRARYTABLE_BITRATE:
+        return COLUMN_BITRATE;
+    // Folders have no "date added", the time the file was last modified
+    // takes its place
+    case ColumnCache::COLUMN_LIBRARYTABLE_DATETIMEADDED:
+        return COLUMN_FILE_MODIFIED_TIME;
+    default:
+        return column;
+    }
+}
 } // namespace
+
+int QmlLibraryTrackListModel::sourceColumn(int column) const {
+    if (column < 0) {
+        return column;
+    }
+    if (auto* const pTrackTableModel = qobject_cast<BaseTrackTableModel*>(sourceModel())) {
+        return pTrackTableModel->fieldIndex(static_cast<ColumnCache::Column>(column));
+    }
+    // The folder browser is wrapped in a ProxyTrackModel, which keeps the
+    // columns of its source
+    QAbstractItemModel* pModel = sourceModel();
+    while (auto* const pProxyModel = qobject_cast<QAbstractProxyModel*>(pModel)) {
+        pModel = pProxyModel->sourceModel();
+    }
+    if (qobject_cast<BrowseTableModel*>(pModel)) {
+        return browseColumn(column);
+    }
+    return column;
+}
 
 QmlLibraryTrackListModel::QmlLibraryTrackListModel(
         const QList<QmlLibraryTrackListColumn*>& librarySource,
@@ -87,7 +136,8 @@ QVariant QmlLibraryTrackListModel::data(const QModelIndex& proxyIndex, int role)
 
     switch (role) {
     case Track: {
-        if (pTrackModel == nullptr) {
+        // Getting a track from the folder browser adds it to the library
+        if (pTrackTableModel == nullptr) {
             return {};
         }
         auto pTrack = make_qml_owned<QmlTrackProxy>(pTrackModel->getTrack(
@@ -112,10 +162,6 @@ QVariant QmlLibraryTrackListModel::data(const QModelIndex& proxyIndex, int role)
                             ColumnCache::COLUMN_TRACKLOCATIONSTABLE_LOCATION)),
                     Qt::DisplayRole)
                                .toString();
-        } else if (pTrackModel != nullptr) {
-            auto pTrack = pTrackModel->getTrack(
-                    QIdentityProxyModel::mapToSource(proxyIndex));
-            location = pTrack->getCoverInfo().coverLocation;
         }
         if (location.isEmpty()) {
             return {};
@@ -138,12 +184,7 @@ QVariant QmlLibraryTrackListModel::data(const QModelIndex& proxyIndex, int role)
         return QIdentityProxyModel::data(proxyIndex, role);
     }
     return QIdentityProxyModel::data(
-            proxyIndex.siblingAtColumn(pTrackTableModel != nullptr
-                            ? pTrackTableModel->fieldIndex(
-                                      static_cast<ColumnCache::Column>(
-                                              pColumn->columnIdx()))
-                            : pColumn->columnIdx()),
-            role);
+            proxyIndex.siblingAtColumn(sourceColumn(pColumn->columnIdx())), role);
 }
 
 int QmlLibraryTrackListModel::columnCount(const QModelIndex& parent) const {
@@ -218,13 +259,7 @@ void QmlLibraryTrackListModel::sort(int column, Qt::SortOrder order) {
         // Use proxyIndex.column()
         return sourceModel()->sort(column, order);
     }
-    auto* const pTrackTableModel = qobject_cast<BaseTrackTableModel*>(sourceModel());
-    sourceModel()->sort(pTrackTableModel != nullptr
-                    ? pTrackTableModel->fieldIndex(
-                              static_cast<ColumnCache::Column>(
-                                      pColumn->columnIdx()))
-                    : pColumn->columnIdx(),
-            order);
+    sourceModel()->sort(sourceColumn(pColumn->columnIdx()), order);
     emit layoutChanged(QList<QPersistentModelIndex>(), QAbstractItemModel::VerticalSortHint);
 }
 

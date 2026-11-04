@@ -5,6 +5,9 @@
 #include <memory>
 
 #include "analyzer/analyzer.h"
+#ifdef Q_OS_ANDROID
+#include "analyzer/androidkickgrid.h"
+#endif
 #include "analyzer/plugins/analyzerplugin.h"
 #include "preferences/beatdetectionsettings.h"
 #include "preferences/usersettings.h"
@@ -45,4 +48,8 @@ class AnalyzerBeats : public Analyzer {
     mixxx::audio::ChannelCount m_channelCount;
     SINT m_maxFramesToProcess;
     SINT m_currentFrame;
+#ifdef Q_OS_ANDROID
+    // Lines constant grids up with the intro kicks
+    mixxx::android::KickGrid m_kickGrid;
+#endif
 };

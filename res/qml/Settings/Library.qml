@@ -1,7 +1,12 @@
 import QtQuick
 import QtQuick.Layouts
-import QtQuick.Controls 2.15
+import QtQuick.Controls
+import QtQuick.Dialogs
+import Qt.labs.qmlmodels
+import QtCore
+import Qt5Compat.GraphicalEffects
 import Mixxx 1.0 as Mixxx
+import "." as Setting
 import "." as SettingComponents
 import ".." as Skin
 import "../Theme"
@@ -10,499 +15,519 @@ Category {
     id: root
 
     property bool dirty: false
-    property var sourcesList: []
-    property bool showFolderBrowser: false
-    property string currentBrowserPath: "/storage/emulated/0/Music"
-    property var subDirectoriesList: []
-    readonly property bool isScanning: Mixxx.Library ? (Mixxx.Library.libraryScanActive || (Mixxx.Library.scanner && Mixxx.Library.scanner.running)) : false
-
-    function refreshSources() {
-        if (Mixxx.Library && Mixxx.Library.getSourcesList) {
-            root.sourcesList = Mixxx.Library.getSourcesList();
-        }
-    }
-
-    function updateSubDirs() {
-        if (Mixxx.Library && Mixxx.Library.getSubDirectories) {
-            root.subDirectoriesList = Mixxx.Library.getSubDirectories(root.currentBrowserPath);
-        }
-    }
-
-    function goUpDir() {
-        var p = root.currentBrowserPath;
-        var lastSlash = p.lastIndexOf("/");
-        if (lastSlash > 0) {
-            root.currentBrowserPath = p.substring(0, lastSlash);
-        } else {
-            root.currentBrowserPath = "/storage/emulated/0";
-        }
-        root.updateSubDirs();
-    }
-
-    function selectSubDir(dirName) {
-        var base = root.currentBrowserPath;
-        if (!base.endsWith("/")) {
-            base += "/";
-        }
-        root.currentBrowserPath = base + dirName;
-        root.updateSubDirs();
-    }
-
-    function addQuickFolder(path) {
-        if (Mixxx.Library && Mixxx.Library.addSourcePath) {
-            Mixxx.Library.addSourcePath(path);
-            Mixxx.Library.rescanLibrary();
-            root.refreshSources();
-        }
-    }
-
-    function removeFolder(path) {
-        if (Mixxx.Library && Mixxx.Library.removeSourcePath) {
-            Mixxx.Library.removeSourcePath(path);
-            Mixxx.Library.rescanLibrary();
-            root.refreshSources();
-        }
-    }
-
-    function isFolderAdded(path) {
-        if (!root.sourcesList) return false;
-        for (var i = 0; i < root.sourcesList.length; i++) {
-            if (root.sourcesList[i].path === path) return true;
-        }
-        return false;
-    }
 
     function load() {
-        root.refreshSources();
-        if (Mixxx.Library && Mixxx.Library.defaultMusicDirectory) {
-            root.currentBrowserPath = Mixxx.Library.defaultMusicDirectory();
-        }
-        if (Mixxx.StreamingManager) {
-            Mixxx.StreamingManager.refreshCacheSize();
-        }
-    }
-
-    function save() {
+        loadSources();
+        integrationRepeater.model = [
+            {
+                service: "Rhythmbox",
+                enabled: Mixxx.Config.libraryRhythmboxEnabled
+            },
+            {
+                service: "Banshee",
+                enabled: Mixxx.Config.libraryBansheeEnabled
+            },
+            {
+                service: "iTunes",
+                enabled: Mixxx.Config.libraryITunesEnabled
+            },
+            {
+                service: "Traktor",
+                enabled: Mixxx.Config.libraryTraktorEnabled
+            },
+            {
+                service: "Rekordbox",
+                enabled: Mixxx.Config.libraryRekordboxEnabled
+            },
+            {
+                service: "Serato",
+                enabled: Mixxx.Config.librarySeratoEnabled
+            },
+        ];
+        metadataSynchroniseEnabled.selected = Mixxx.Config.librarySyncTrackMetadataExport ? "on" : "off";
+        metadataSynchroniseSeratoEnabled.selected = Mixxx.Config.librarySeratoMetadataExport ? "on" : "off";
+        metadataRelativePathEnabled.selected = Mixxx.Config.libraryUseRelativePathOnExport ? "on" : "off";
+        searchCompletionEnabled.selected = Mixxx.Config.librarySearchCompletionsEnable ? "on" : "off";
+        searchHistoryKeyboardEnabled.selected = Mixxx.Config.librarySearchHistoryShortcutsEnable ? "on" : "off";
+        historyDuplicateDistanceInput.value = Mixxx.Config.libraryHistoryTrackDuplicateDistance;
+        historyDeleteLessThanInput.value = Mixxx.Config.libraryHistoryMinTracksToKeep;
+        searchAsYouTypeTimeoutInput.setValue(Mixxx.Config.librarySearchDebouncingTimeout / 1000);
+        pitchSliderFuzzBPMInput.setValue(Mixxx.Config.librarySearchBpmFuzzyRange);
         root.dirty = false;
+        errorMessage.text = "";
+    }
+    function loadSources() {
+        let rootDirs = [];
+        for (let source of Object.values(Mixxx.Library.sources)) {
+            rootDirs.push({
+                path: source.path,
+                trackCount: source.trackCount,
+                totalMinute: Math.round(source.totalSecond / 60)
+            });
+        }
+        sourceListView.model = rootDirs;
+    }
+    function reset() {
+    }
+    function save() {
+        let requestedDirs = [...sourceListView.model];
+        let changed = false;
+
+        for (let source of requestedDirs) {
+            if (source.trackCount === undefined) {
+                // Handle addition
+                switch (Mixxx.Library.addSource(source.path)) {
+                case Mixxx.Library.AddResult.AlreadyWatching:
+                    errorMessage.text = qsTr("This or a parent directory is already in your library.");
+                    return;
+                case Mixxx.Library.AddResult.InvalidOrMissingDirectory:
+                    errorMessage.text = qsTr("This or a listed directory does not exist or is inaccessible.\nAborting the operation to avoid library inconsistencies");
+                    return;
+                case Mixxx.Library.AddResult.UnreadableDirectory:
+                    errorMessage.text = qsTr("This directory can not be read.");
+                    return;
+                case Mixxx.Library.AddResult.SqlError:
+                    errorMessage.text = qsTr("An unknown error occurred.\nAborting the operation to avoid library inconsistencies");
+                    return;
+                }
+            } else if (source.deleting !== undefined) {
+                // Handle removal
+                switch (Mixxx.Library.removeSource(source.path, source.deleting)) {
+                case Mixxx.Library.RemoveResult.NotFound:
+                    errorMessage.text = qsTr("This directory can not be found.");
+                    return;
+                case Mixxx.Library.RemoveResult.SqlError:
+                    errorMessage.text = qsTr("An unknown error occurred.\nAborting the operation to avoid library inconsistencies");
+                    return;
+                }
+            } else if (source.relink) {
+                // Handle relinking
+                switch (Mixxx.Library.relinkSource(source.path, source.relink)) {
+                case Mixxx.Library.RelocateResult.InvalidOrMissingDirectory:
+                    errorMessage.text = qsTr("This or a listed directory does not exist or is inaccessible.\nAborting the operation to avoid library inconsistencies");
+                    return;
+                case Mixxx.Library.RelocateResult.UnreadableDirectory:
+                    errorMessage.text = qsTr("This directory can not be read.");
+                    return;
+                case Mixxx.Library.RelocateResult.SqlError:
+                    errorMessage.text = qsTr("An unknown error occurred.\nAborting the operation to avoid library inconsistencies");
+                    return;
+                }
+            } else {
+                continue;
+            }
+            changed = true;
+        }
+
+        if (changed) {
+            Mixxx.Library.scanner.start();
+        }
+
+        let integrations = {};
+        for (let i = 0; i < integrationRepeater.count; i++) {
+            integrations[integrationRepeater.itemAt(i).modelData.service] = integrationRepeater.itemAt(i).enabled;
+        }
+        Mixxx.Config.libraryRhythmboxEnabled = integrations.Rhythmbox;
+        Mixxx.Config.libraryBansheeEnabled = integrations.Banshee;
+        Mixxx.Config.libraryITunesEnabled = integrations.iTunes;
+        Mixxx.Config.libraryTraktorEnabled = integrations.Traktor;
+        Mixxx.Config.libraryRekordboxEnabled = integrations.Rekordbox;
+        Mixxx.Config.librarySeratoEnabled = integrations.Serato;
+        Mixxx.Config.librarySyncTrackMetadataExport = metadataSynchroniseEnabled.enabled;
+        Mixxx.Config.librarySeratoMetadataExport = metadataSynchroniseSeratoEnabled.enabled;
+        Mixxx.Config.libraryUseRelativePathOnExport = metadataRelativePathEnabled.enabled;
+        Mixxx.Config.librarySearchCompletionsEnable = searchCompletionEnabled.enabled;
+        Mixxx.Config.librarySearchHistoryShortcutsEnable = searchHistoryKeyboardEnabled.enabled;
+        Mixxx.Config.libraryHistoryTrackDuplicateDistance = historyDuplicateDistanceInput.value;
+        Mixxx.Config.libraryHistoryMinTracksToKeep = historyDeleteLessThanInput.value;
+        Mixxx.Config.librarySearchDebouncingTimeout = searchAsYouTypeTimeoutInput.value * 1000;
+        Mixxx.Config.librarySearchBpmFuzzyRange = pitchSliderFuzzBPMInput.value;
+        load();
     }
 
-    label: qsTr("Librería Musical")
+    label: qsTr("Library")
 
     Component.onCompleted: {
         root.load();
     }
 
-    Connections {
-        target: Mixxx.Library
-
-        function onSourcesChanged() {
-            root.refreshSources();
-        }
-
-        function onLibraryScanActiveChanged() {
-            root.refreshSources();
-        }
-    }
-
     ScrollView {
         id: scrollView
-        anchors.bottom: libraryAction.top
-        anchors.bottomMargin: 8
+
+        anchors.bottom: buttonActions.top
+        anchors.bottomMargin: 18
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.top: parent.top
-        clip: true
-        contentWidth: availableWidth
+        spacing: 0
 
         ColumnLayout {
-            width: scrollView.availableWidth
-            spacing: 14
+            width: root.width - 10
 
-            // ================= 1. CARPETAS DE MÚSICA LOCAL =================
-            Rectangle {
-                Layout.fillWidth: true
-                Layout.preferredHeight: localCol.implicitHeight + 24
-                color: Theme.darkGray3
-                radius: 8
-                border.color: "#303440"
-                border.width: 1
+            RowLayout {
+                Text {
+                    Layout.bottomMargin: 14
+                    Layout.leftMargin: 17
+                    color: Theme.white
+                    font.pixelSize: 16
+                    font.weight: Font.DemiBold
+                    text: qsTr("Sources")
+                }
+            }
+            Mixxx.SettingGroup {
+                Layout.bottomMargin: 6
+                anchors.left: parent.left
+                anchors.right: parent.right
+                implicitHeight: sources.implicitHeight
+                label: qsTr("Sources")
 
-                ColumnLayout {
-                    id: localCol
-                    anchors.fill: parent
-                    anchors.margins: 12
-                    spacing: 12
+                GridLayout {
+                    id: sources
 
-                    // Header row
-                    RowLayout {
-                        Layout.fillWidth: true
-                        spacing: 8
+                    columnSpacing: 20
+                    columns: width > 800 ? 2 : 1
+                    width: parent.width
 
-                        Text {
-                            text: "📁 Carpetas de Música Local"
-                            font.bold: true
-                            font.pixelSize: 15
-                            color: Theme.white
-                            Layout.fillWidth: true
-                        }
-
-                        Rectangle {
-                            Layout.preferredHeight: 24
-                            Layout.preferredWidth: scannerStatusText.implicitWidth + 16
-                            radius: 12
-                            color: root.isScanning ? "#ff910022" : "#00e67622"
-                            border.color: root.isScanning ? "#ff9100" : "#00e676"
-                            border.width: 1
-
-                            Text {
-                                id: scannerStatusText
-                                anchors.centerIn: parent
-                                font.pixelSize: 11
-                                font.bold: true
-                                color: root.isScanning ? "#ff9100" : "#00e676"
-                                text: root.isScanning ? "⟳ Escaneando..." : "✔ Colección lista"
-                            }
-                        }
-                    }
-
-                    Text {
-                        text: "Elige las carpetas de tu móvil donde guardas tu música. Mixxx monitorizará e indexará automáticamente las pistas encontradas."
-                        font.pixelSize: 11
-                        color: "#90a4ae"
-                        wrapMode: Text.WordWrap
-                        Layout.fillWidth: true
-                    }
-
-                    // --- LISTA DE CARPETAS MONITORIZADAS ---
-                    Text {
-                        text: "Carpetas añadidas actualmente:"
-                        font.bold: true
-                        font.pixelSize: 12
-                        color: "#b0bec5"
-                    }
-
-                    ColumnLayout {
-                        Layout.fillWidth: true
-                        spacing: 6
-
-                        Repeater {
-                            model: root.sourcesList
-
-                            Rectangle {
-                                Layout.fillWidth: true
-                                Layout.preferredHeight: 48
-                                color: "#161b24"
-                                radius: 6
-                                border.color: "#283344"
-                                border.width: 1
-
-                                RowLayout {
-                                    anchors.fill: parent
-                                    anchors.leftMargin: 10
-                                    anchors.rightMargin: 10
-                                    spacing: 8
-
-                                    Text {
-                                        text: "📁"
-                                        font.pixelSize: 16
-                                    }
-
-                                    ColumnLayout {
-                                        Layout.fillWidth: true
-                                        spacing: 2
-
-                                        Text {
-                                            text: modelData.path
-                                            font.bold: true
-                                            font.pixelSize: 12
-                                            color: "#ffffff"
-                                            elide: Text.ElideMiddle
-                                            Layout.fillWidth: true
-                                        }
-
-                                        Text {
-                                            text: (modelData.trackCount || 0) + " canciones indexadas" +
-                                                  (modelData.totalSecond > 0 ? " • " + Math.round(modelData.totalSecond / 60) + " min" : "")
-                                            font.pixelSize: 10
-                                            color: "#00e5ff"
-                                        }
-                                    }
-
-                                    Skin.Button {
-                                        Layout.preferredHeight: 30
-                                        Layout.preferredWidth: 80
-                                        activeColor: "#ff5252"
-                                        backgroundColor: "#421e24"
-                                        normalColor: "#ff8a80"
-                                        font.bold: true
-                                        font.pixelSize: 10
-                                        text: "🗑 Quitar"
-                                        onClicked: {
-                                            root.removeFolder(modelData.path);
-                                        }
-                                    }
-                                }
-                            }
-                        }
-
-                        // Empty State if no folder configured
-                        Rectangle {
-                            Layout.fillWidth: true
-                            Layout.preferredHeight: 42
-                            color: "#1c212c"
-                            radius: 6
-                            visible: !root.sourcesList || root.sourcesList.length === 0
-
-                            RowLayout {
-                                anchors.centerIn: parent
-                                spacing: 8
-                                Text {
-                                    text: "⚠️ No hay carpetas añadidas aún. Pulsa en los botones de abajo para añadir."
-                                    font.pixelSize: 11
-                                    color: "#ffb74d"
-                                }
-                            }
-                        }
-                    }
-
-                    // --- ACCESOS RÁPIDOS ANDROID ---
-                    Text {
-                        text: "Accesos rápidos (Ubicaciones estándar en Android):"
-                        font.bold: true
-                        font.pixelSize: 12
-                        color: "#b0bec5"
-                    }
-
-                    Flow {
-                        Layout.fillWidth: true
-                        spacing: 8
-
-                        Skin.Button {
-                            height: 32
-                            width: 170
-                            activeColor: "#00e5ff"
-                            backgroundColor: root.isFolderAdded("/storage/emulated/0/Music") ? "#004d40" : "#1a2533"
-                            normalColor: root.isFolderAdded("/storage/emulated/0/Music") ? "#00e676" : "#ffffff"
-                            font.bold: true
-                            font.pixelSize: 11
-                            text: (root.isFolderAdded("/storage/emulated/0/Music") ? "✔ " : "➕ ") + "🎵 Música (/sdcard)"
-                            onClicked: {
-                                root.addQuickFolder("/storage/emulated/0/Music");
-                            }
-                        }
-
-                        Skin.Button {
-                            height: 32
-                            width: 180
-                            activeColor: "#00e5ff"
-                            backgroundColor: root.isFolderAdded("/storage/emulated/0/Download") ? "#004d40" : "#1a2533"
-                            normalColor: root.isFolderAdded("/storage/emulated/0/Download") ? "#00e676" : "#ffffff"
-                            font.bold: true
-                            font.pixelSize: 11
-                            text: (root.isFolderAdded("/storage/emulated/0/Download") ? "✔ " : "➕ ") + "📥 Descargas (/Download)"
-                            onClicked: {
-                                root.addQuickFolder("/storage/emulated/0/Download");
-                            }
-                        }
-
-                        Skin.Button {
-                            height: 32
-                            width: 160
-                            activeColor: "#00e5ff"
-                            backgroundColor: root.isFolderAdded("/storage/emulated/0/Mixxx") ? "#004d40" : "#1a2533"
-                            normalColor: root.isFolderAdded("/storage/emulated/0/Mixxx") ? "#00e676" : "#ffffff"
-                            font.bold: true
-                            font.pixelSize: 11
-                            text: (root.isFolderAdded("/storage/emulated/0/Mixxx") ? "✔ " : "➕ ") + "💽 Mixxx DJ (/Mixxx)"
-                            onClicked: {
-                                root.addQuickFolder("/storage/emulated/0/Mixxx");
-                            }
-                        }
-                    }
-
-                    // --- BOTÓN EXPLORAR / AÑADIR OTRA CARPETA ---
-                    RowLayout {
-                        Layout.fillWidth: true
-                        spacing: 10
-
-                        Skin.Button {
-                            Layout.preferredHeight: 36
-                            Layout.preferredWidth: 220
-                            activeColor: "#00ffff"
-                            backgroundColor: root.showFolderBrowser ? "#00363a" : "#263238"
-                            normalColor: "#00e5ff"
-                            font.bold: true
-                            font.pixelSize: 11
-                            text: root.showFolderBrowser ? "▲ Ocultar Explorador" : "📂 Explorar / Otra Carpeta..."
-                            onClicked: {
-                                root.showFolderBrowser = !root.showFolderBrowser;
-                                if (root.showFolderBrowser) {
-                                    root.updateSubDirs();
-                                }
-                            }
-                        }
-
-                        Skin.Button {
-                            Layout.preferredHeight: 36
-                            Layout.preferredWidth: 190
-                            activeColor: "#00e5ff"
-                            backgroundColor: "#1565c0"
-                            normalColor: "#ffffff"
-                            font.bold: true
-                            font.pixelSize: 11
-                            text: "⟳ Re-escanear Música"
-                            enabled: !root.isScanning
-                            onClicked: {
-                                if (Mixxx.Library && Mixxx.Library.rescanLibrary) {
-                                    Mixxx.Library.rescanLibrary();
-                                }
-                            }
-                        }
-                    }
-
-                    // --- PANEL EXPANDIBLE DE EXPLORADOR DE CARPETAS ---
                     Rectangle {
                         Layout.fillWidth: true
-                        Layout.preferredHeight: browserCol.implicitHeight + 20
-                        color: "#111620"
-                        radius: 6
-                        border.color: "#00e5ff44"
-                        border.width: 1
-                        visible: root.showFolderBrowser
+                        // anchors.left: parent.left
+                        // anchors.right: parent.right
+                        Layout.minimumWidth: sourcePane.implicitWidth
+                        color: '#0E0E0E'
+                        implicitHeight: sourcePane.implicitHeight + 20
 
                         ColumnLayout {
-                            id: browserCol
+                            id: sourcePane
+
                             anchors.fill: parent
-                            anchors.margins: 10
-                            spacing: 8
+                            spacing: 0
 
-                            Text {
-                                text: "🔍 Explorador de carpetas en el dispositivo:"
-                                font.bold: true
-                                font.pixelSize: 12
-                                color: "#00e5ff"
-                            }
-
-                            // Current path display with Back/Up button
                             RowLayout {
                                 Layout.fillWidth: true
-                                spacing: 6
+                                Layout.leftMargin: 8
+                                Layout.rightMargin: 8
+                                Layout.topMargin: 10
 
-                                Skin.Button {
-                                    Layout.preferredHeight: 32
-                                    Layout.preferredWidth: 80
-                                    activeColor: "#00ffff"
-                                    backgroundColor: "#1c2a38"
-                                    normalColor: "#ffffff"
-                                    font.bold: true
-                                    font.pixelSize: 11
-                                    text: "⬆ Subir"
-                                    onClicked: {
-                                        root.goUpDir();
-                                    }
-                                }
-
-                                TextField {
-                                    id: pathInputField
+                                Text {
                                     Layout.fillWidth: true
-                                    Layout.preferredHeight: 32
-                                    text: root.currentBrowserPath
-                                    color: "#ffffff"
-                                    font.pixelSize: 11
-                                    background: Rectangle {
-                                        color: "#18222d"
-                                        radius: 4
-                                        border.color: pathInputField.activeFocus ? "#00ffff" : "#37474f"
-                                        border.width: 1
-                                    }
+                                    Layout.leftMargin: 17
+                                    color: Theme.white
+                                    font.pixelSize: 14
+                                    font.weight: Font.DemiBold
+                                    text: qsTr('Music Directory')
+                                }
+                                FolderDialog {
+                                    id: addDialog
+
+                                    currentFolder: StandardPaths.writableLocation(StandardPaths.MusicLocation)
+                                    title: qsTr("Choose a music directory")
+
                                     onAccepted: {
-                                        root.currentBrowserPath = text.trim();
-                                        root.updateSubDirs();
+                                        let model = sourceListView.model;
+                                        let path = addDialog.selectedFolder.toString();
+                                        path = path.replace(/^file:\/{2,3}/, ""); // FIXME does this work on Windows ?
+                                        model.push({
+                                            path: decodeURIComponent(path)
+                                        });
+                                        root.dirty = true;
+                                        sourceListView.model = model;
+                                    }
+                                }
+                                SettingComponents.FormButton {
+                                    activeColor: "#999999"
+                                    backgroundColor: "#3F3F3F"
+                                    opacity: enabled ? 1.0 : 0.5
+                                    text: qsTr("Add")
+
+                                    onPressed: addDialog.open()
+                                }
+                            }
+                            ListView {
+                                id: sourceListView
+
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: 240
+                                clip: true
+                                focus: true
+                                model: []
+
+                                // anchors.fill: parent
+                                // anchors.topMargin: 10
+                                // anchors.bottomMargin: 10
+                                // anchors.leftMargin: 17
+                                // anchors.rightMargin: 17
+
+                                delegate: MouseArea {
+                                    id: mouse
+
+                                    required property int index
+                                    required property var modelData
+                                    readonly property bool selected: ListView.view.currentIndex == index && modelData.deleting === undefined && !modelData.relink && modelData.trackCount !== undefined
+
+                                    height: 34
+                                    hoverEnabled: true
+                                    width: ListView.view.width
+
+                                    onPressed: {
+                                        ListView.view.currentIndex = index;
+                                    }
+                                    onSelectedChanged: {
+                                        removeButton.confirming = false;
+                                    }
+
+                                    Timer {
+                                        id: cancelDeletion
+
+                                        interval: 1000
+                                        running: removeButton.confirming && !mouse.containsMouse
+
+                                        onTriggered: {
+                                            removeButton.confirming = false;
+                                        }
+                                    }
+                                    Rectangle {
+                                        anchors.fill: parent
+                                        color: index % 2 == 0 ? '#3F3F3F' : '#2B2B2B'
+
+                                        // width: 180; height: 40
+                                        RowLayout {
+                                            anchors.fill: parent
+                                            anchors.leftMargin: 8
+                                            anchors.rightMargin: 8
+
+                                            Text {
+                                                text: qsTr("Icon")
+                                                width: 160
+                                            }
+                                            Text {
+                                                Layout.fillWidth: true
+                                                color: Theme.white
+                                                font.pixelSize: 14
+                                                font.weight: Font.Medium
+                                                opacity: modelData.deleting !== undefined ? 0.4 : 1
+                                                text: modelData.path
+                                            }
+                                            FolderDialog {
+                                                id: relinkDialog
+
+                                                currentFolder: StandardPaths.writableLocation(StandardPaths.MusicLocation)
+                                                title: qsTr("Relink music directory to new location")
+
+                                                onAccepted: {
+                                                    let model = sourceListView.model;
+                                                    let path = selectedFolder.toString().replace(/^(file:\/\/)/, ""); // FIXME does this work on Windows ?
+                                                    model[mouse.index].relink = decodeURIComponent(path);
+                                                    root.dirty = true;
+                                                    sourceListView.model = model;
+                                                }
+                                            }
+                                            SettingComponents.FormButton {
+                                                id: relinkButton
+
+                                                activeColor: "#999999"
+                                                backgroundColor: "#3F3F3F"
+                                                opacity: enabled ? 1.0 : 0.5
+                                                text: modelData.relink ? qsTr("Save to proceed") : qsTr("Relink")
+                                                visible: selected && modelData.trackCount !== undefined && !Mixxx.Library.scanner.running
+
+                                                onPressed: {
+                                                    relinkDialog.open();
+                                                }
+                                            }
+                                            Item {
+                                                id: removeButton
+
+                                                property bool confirming: false
+
+                                                clip: true
+                                                implicitHeight: Math.max(actionButton.implicitHeight, removeModeSelector.implicitHeight)
+                                                implicitWidth: removeButton.confirming ? removeModeSelector.implicitWidth : actionButton.implicitWidth
+                                                visible: selected && !Mixxx.Library.scanner.running
+
+                                                Behavior on implicitWidth {
+                                                    PropertyAnimation {
+                                                    }
+                                                }
+
+                                                SettingComponents.FormButton {
+                                                    id: actionButton
+
+                                                    activeColor: "#999999"
+                                                    anchors.centerIn: parent
+                                                    backgroundColor: "#7D3B3B"
+                                                    opacity: enabled ? 1.0 : 0.5
+                                                    text: qsTr("Remove")
+                                                    visible: !removeButton.confirming
+
+                                                    onPressed: {
+                                                        if (modelData.trackCount == 0) {
+                                                            let model = sourceListView.model;
+                                                            model[mouse.index].deleting = Mixxx.Library.PurgeTracks;
+                                                            root.dirty = true;
+                                                            sourceListView.model = model;
+                                                        } else {
+                                                            removeButton.confirming = !removeButton.confirming;
+                                                        }
+                                                    }
+                                                }
+                                                RatioChoice {
+                                                    id: removeModeSelector
+
+                                                    anchors.centerIn: parent
+                                                    inactiveColor: Theme.darkGray4
+                                                    normalizedWidth: false
+                                                    options: ["keep tracks", "hide tracks", "purge tracks"]
+                                                    selected: null
+                                                    visible: removeButton.confirming
+
+                                                    onSelectedChanged: {
+                                                        let model = sourceListView.model;
+                                                        switch (options.indexOf(selected)) {
+                                                        case 0:
+                                                            model[mouse.index].deleting = Mixxx.Library.KeepTracks;
+                                                            break;
+                                                        case 1:
+                                                            model[mouse.index].deleting = Mixxx.Library.HideTracks;
+                                                            break;
+                                                        case 2:
+                                                            model[mouse.index].deleting = Mixxx.Library.PurgeTracks;
+                                                            break;
+                                                        default:
+                                                            console.warn(`unknown value deletion mode ${selected}. Ignoring.`);
+                                                            return;
+                                                        }
+                                                        root.dirty = true;
+                                                        sourceListView.model = model;
+                                                    }
+                                                }
+                                            }
+                                            Text {
+                                                color: '#626262'
+                                                font.italic: modelData.trackCount === undefined || modelData.totalMinute === undefined || !!modelData.relink
+                                                font.pixelSize: 14
+                                                font.weight: Font.Medium
+                                                text: {
+                                                    if (modelData.relink) {
+                                                        return qsTr(`Save to relink to ${modelData.relink}`);
+                                                    } else if (modelData.deleting !== undefined) {
+                                                        let action = {
+                                                            0: qsTr("keep already imported tracks"),
+                                                            1: qsTr("hide imported tracks"),
+                                                            2: qsTr("purge imported tracks")
+                                                        }[modelData.deleting] || 'perform an unknown action';
+                                                        return qsTr(`Save to delete and ${action}`);
+                                                    } else if (modelData.trackCount !== undefined && modelData.totalMinute !== undefined) {
+                                                        return qsTr(`${modelData.trackCount} tracks, ${modelData.totalMinute} minutes`);
+                                                    } else {
+                                                        return qsTr('Save to import new folder');
+                                                    }
+                                                }
+                                                visible: !selected && !Mixxx.Library.scanner.running
+                                            }
+                                        }
                                     }
                                 }
                             }
+                        }
+                        Rectangle {
+                            anchors.fill: parent
+                            color: Qt.alpha('black', 0.4)
+                            visible: Mixxx.Library.scanner.running
 
-                            // Subdirectories flow
-                            Text {
-                                text: "Subcarpetas encontradas en esta ubicación (toca para entrar):"
-                                font.pixelSize: 10
-                                color: "#90a4ae"
+                            MouseArea {
+                                anchors.fill: parent
                             }
+                            Text {
+                                id: scanProgress
 
-                            Flow {
-                                Layout.fillWidth: true
-                                spacing: 6
+                                color: Theme.white
+                                font.pixelSize: 14
+                                text: qsTr("File scanning...")
+
+                                anchors {
+                                    bottom: parent.bottom
+                                    left: parent.left
+                                    margins: 5
+                                }
+                                Connections {
+                                    function onProgress(currentPath) {
+                                        scanProgress.text = qsTr(`File scanning: ${currentPath}`);
+                                    }
+
+                                    target: Mixxx.Library.scanner
+                                }
+                            }
+                            SettingComponents.FormButton {
+                                activeColor: "#999999"
+                                backgroundColor: Mixxx.Library.scanner.cancelling ? "#999999" : "#3a60be"
+                                enabled: !Mixxx.Library.scanner.cancelling
+                                text: qsTr("Cancel")
+
+                                onPressed: {
+                                    Mixxx.Library.scanner.cancel();
+                                }
+
+                                anchors {
+                                    bottom: parent.bottom
+                                    margins: 5
+                                    right: parent.right
+                                }
+                            }
+                        }
+                    }
+                    ColumnLayout {
+                        Rectangle {
+                            Layout.preferredWidth: root.width * (sources.columns == 2 ? 0.35 : 1)
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            color: Theme.darkGray2
+                            implicitHeight: integrationPane.implicitHeight + 20
+
+                            GridLayout {
+                                id: integrationPane
+
+                                anchors.bottomMargin: 10
+                                anchors.fill: parent
+                                anchors.leftMargin: 17
+                                anchors.rightMargin: 17
+                                anchors.topMargin: 10
+                                columns: sources.columns == 2 ? 1 : 2
 
                                 Repeater {
-                                    model: root.subDirectoriesList
+                                    id: integrationRepeater
 
-                                    Rectangle {
-                                        height: 28
-                                        width: dirLabel.implicitWidth + 20
-                                        radius: 4
-                                        color: "#1e293b"
-                                        border.color: "#334155"
-                                        border.width: 1
+                                    RowLayout {
+                                        property alias enabled: integrationEnabled.enabled
+                                        required property var modelData
 
-                                        RowLayout {
-                                            anchors.centerIn: parent
-                                            spacing: 4
-                                            Text { text: "📁"; font.pixelSize: 11 }
+                                        Layout.preferredWidth: sourcePane.width * 0.5
+
+                                        Mixxx.SettingParameter {
+                                            Layout.fillWidth: true
+                                            label: modelData.service
+
                                             Text {
-                                                id: dirLabel
-                                                text: modelData
-                                                color: "#e2e8f0"
-                                                font.pixelSize: 11
+                                                anchors.fill: parent
+                                                color: Theme.white
+                                                font.pixelSize: 14
+                                                font.weight: Font.Medium
+                                                horizontalAlignment: Text.AlignLeft
+                                                text: parent.label
+                                                verticalAlignment: Text.AlignVCenter
                                             }
                                         }
+                                        RatioChoice {
+                                            id: integrationEnabled
 
-                                        MouseArea {
-                                            anchors.fill: parent
-                                            onClicked: {
-                                                root.selectSubDir(modelData);
-                                            }
+                                            readonly property bool enabled: selected == "on"
+
+                                            inactiveColor: Theme.darkGray4
+                                            maxWidth: parent.width * 0.5
+                                            options: ["on", "off"]
+                                            selected: modelData.enabled ? "on" : "off"
+
+                                            onSelectedChanged: root.dirty = true
                                         }
-                                    }
-                                }
-
-                                Text {
-                                    visible: !root.subDirectoriesList || root.subDirectoriesList.length === 0
-                                    text: "(No hay más subcarpetas)"
-                                    font.pixelSize: 10
-                                    color: "#64748b"
-                                }
-                            }
-
-                            // Confirm Add Button
-                            RowLayout {
-                                Layout.fillWidth: true
-                                spacing: 10
-
-                                Skin.Button {
-                                    Layout.preferredHeight: 34
-                                    Layout.fillWidth: true
-                                    activeColor: "#00e676"
-                                    backgroundColor: "#004d40"
-                                    normalColor: "#ffffff"
-                                    font.bold: true
-                                    font.pixelSize: 11
-                                    text: "✔ Añadir '" + root.currentBrowserPath + "' a la Librería"
-                                    onClicked: {
-                                        root.addQuickFolder(root.currentBrowserPath);
-                                        root.showFolderBrowser = false;
-                                    }
-                                }
-
-                                Skin.Button {
-                                    Layout.preferredHeight: 34
-                                    Layout.preferredWidth: 90
-                                    activeColor: "#ff5252"
-                                    backgroundColor: "#2c3440"
-                                    normalColor: "#b0bec5"
-                                    font.pixelSize: 11
-                                    text: "Cerrar"
-                                    onClicked: {
-                                        root.showFolderBrowser = false;
                                     }
                                 }
                             }
@@ -510,238 +535,411 @@ Category {
                     }
                 }
             }
+            Mixxx.SettingGroup {
+                Layout.bottomMargin: 6
+                Layout.topMargin: 40
+                anchors.left: parent.left
+                anchors.right: parent.right
+                implicitHeight: metadataColumn.height
+                label: qsTr("Metadata")
 
-            // ================= 2. CACHÉ DE STREAMING (NAVIDROME / AUDIUS / TIDAL) =================
-            Rectangle {
-                Layout.fillWidth: true
-                Layout.preferredHeight: streamingCol.implicitHeight + 24
-                color: Theme.darkGray3
-                radius: 8
-                border.color: "#303440"
-                border.width: 1
+                Column {
+                    id: metadataColumn
 
-                ColumnLayout {
-                    id: streamingCol
-                    anchors.fill: parent
-                    anchors.margins: 12
-                    spacing: 10
+                    anchors.left: parent.left
+                    anchors.right: parent.right
 
                     Text {
-                        text: "☁️ Almacenamiento & Caché de Streaming"
-                        font.bold: true
-                        font.pixelSize: 14
-                        color: "#00e5ff"
-                        Layout.fillWidth: true
-                    }
-
-                    Text {
-                        text: "Las pistas reproducidas desde plataformas de streaming (Navidrome, Audius, SoundCloud, Tidal) se almacenan localmente para garantizar una reproducción sin cortes de audio aunque se pierda la conexión a internet."
-                        font.pixelSize: 11
-                        color: "#90a4ae"
-                        wrapMode: Text.WordWrap
-                        Layout.fillWidth: true
-                    }
-
-                    RowLayout {
-                        Layout.fillWidth: true
-                        spacing: 12
-
-                        Rectangle {
-                            Layout.preferredHeight: 40
-                            Layout.fillWidth: true
-                            color: "#181b24"
-                            radius: 6
-                            border.color: "#292f3d"
-                            border.width: 1
-
-                            RowLayout {
-                                anchors.fill: parent
-                                anchors.margins: 8
-                                spacing: 8
-
-                                Text {
-                                    text: "💾 Espacio en uso:"
-                                    font.pixelSize: 12
-                                    color: "#b0bec5"
-                                }
-
-                                Text {
-                                    text: {
-                                        var bytes = Mixxx.StreamingManager ? Mixxx.StreamingManager.cacheSizeBytes : 0;
-                                        if (bytes <= 0) return "0 MB (Caché vacía)";
-                                        var mb = bytes / (1024 * 1024);
-                                        if (mb > 1024) return (mb / 1024).toFixed(2) + " GB";
-                                        return mb.toFixed(1) + " MB";
-                                    }
-                                    font.bold: true
-                                    font.pixelSize: 13
-                                    color: "#00e676"
-                                }
-
-                                Item { Layout.fillWidth: true }
-
-                                Text {
-                                    text: "Ruta: " + (Mixxx.StreamingManager ? Mixxx.StreamingManager.cacheDirectory : "")
-                                    font.pixelSize: 10
-                                    color: "#607d8b"
-                                    elide: Text.ElideMiddle
-                                    Layout.maximumWidth: 260
-                                }
-                            }
-                        }
-
-                        Skin.Button {
-                            Layout.preferredHeight: 40
-                            Layout.preferredWidth: 150
-                            activeColor: "#ff5252"
-                            backgroundColor: "#421e24"
-                            normalColor: "#ff8a80"
-                            font.bold: true
-                            text: "🗑️ Vaciar Caché"
-                            onClicked: {
-                                if (Mixxx.StreamingManager) {
-                                    Mixxx.StreamingManager.clearCache();
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            // ================= 3. OPCIONES DE BÚSQUEDA Y METADATOS =================
-            Rectangle {
-                Layout.fillWidth: true
-                Layout.preferredHeight: searchCol.implicitHeight + 24
-                color: Theme.darkGray3
-                radius: 8
-                border.color: "#303440"
-                border.width: 1
-
-                ColumnLayout {
-                    id: searchCol
-                    anchors.fill: parent
-                    anchors.margins: 12
-                    spacing: 10
-
-                    Text {
-                        text: "🔍 Búsqueda y Organización"
-                        font.bold: true
-                        font.pixelSize: 14
                         color: Theme.white
-                        Layout.fillWidth: true
+                        font.pixelSize: 14
+                        font.weight: Font.DemiBold
+                        text: qsTr("Metadata")
                     }
-
-                    RowLayout {
-                        Layout.fillWidth: true
-                        spacing: 12
-
-                        Text {
-                            text: "Autocompletar búsquedas al escribir"
-                            font.pixelSize: 12
-                            color: Theme.white
-                            Layout.fillWidth: true
-                        }
-
-                        Switch {
-                            checked: Mixxx.Config.librarySearchCompletionsEnable
-                            onToggled: {
-                                Mixxx.Config.librarySearchCompletionsEnable = checked;
-                                root.dirty = true;
-                            }
-                        }
+                    Item {
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        height: 10
                     }
-
                     Rectangle {
-                        Layout.fillWidth: true
-                        height: 1
-                        color: "#282c37"
-                    }
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        color: Theme.darkGray2
+                        implicitHeight: metadataPane.implicitHeight + 20
 
-                    RowLayout {
-                        Layout.fillWidth: true
-                        spacing: 12
+                        GridLayout {
+                            id: metadataPane
 
-                        Text {
-                            text: "Sincronizar metadatos y etiquetas ID3 al editar"
-                            font.pixelSize: 12
-                            color: Theme.white
-                            Layout.fillWidth: true
-                        }
+                            anchors.bottomMargin: 10
+                            anchors.fill: parent
+                            anchors.leftMargin: 17
+                            anchors.rightMargin: 17
+                            anchors.topMargin: 10
+                            columnSpacing: 20
+                            columns: metadataColumn.width < 850 ? 1 : 2
+                            rowSpacing: 15
 
-                        Switch {
-                            checked: Mixxx.Config.librarySyncTrackMetadataExport
-                            onToggled: {
-                                Mixxx.Config.librarySyncTrackMetadataExport = checked;
-                                root.dirty = true;
+                            RowLayout {
+                                Layout.preferredWidth: metadataPane.width / metadataPane.columns
+
+                                Mixxx.SettingParameter {
+                                    Layout.fillWidth: true
+                                    label: qsTr("Synchronise metadata with file")
+
+                                    Text {
+                                        anchors.fill: parent
+                                        color: Theme.white
+                                        font.pixelSize: 14
+                                        font.weight: Font.Medium
+                                        horizontalAlignment: Text.AlignLeft
+                                        text: parent.label
+                                        verticalAlignment: Text.AlignVCenter
+                                    }
+                                }
+                                RatioChoice {
+                                    id: metadataSynchroniseEnabled
+
+                                    readonly property bool enabled: selected == "on"
+
+                                    inactiveColor: Theme.darkGray4
+                                    maxWidth: parent.width * 0.5
+                                    options: ["on", "off"]
+
+                                    onSelectedChanged: root.dirty = true
+                                }
+                            }
+                            RowLayout {
+                                Layout.preferredWidth: metadataPane.width / metadataPane.columns
+
+                                Mixxx.SettingParameter {
+                                    Layout.fillWidth: true
+                                    label: qsTr("Synchronise metadata with Serato library")
+
+                                    Text {
+                                        anchors.fill: parent
+                                        color: Theme.white
+                                        font.pixelSize: 14
+                                        font.weight: Font.Medium
+                                        horizontalAlignment: Text.AlignLeft
+                                        text: parent.label
+                                        verticalAlignment: Text.AlignVCenter
+                                    }
+                                }
+                                RatioChoice {
+                                    id: metadataSynchroniseSeratoEnabled
+
+                                    readonly property bool enabled: selected == "on"
+
+                                    inactiveColor: Theme.darkGray4
+                                    maxWidth: parent.width * 0.5
+                                    options: ["on", "off"]
+
+                                    onSelectedChanged: root.dirty = true
+                                }
+                            }
+                            RowLayout {
+                                Layout.preferredWidth: metadataPane.width / metadataPane.columns
+
+                                Mixxx.SettingParameter {
+                                    Layout.fillWidth: true
+                                    label: qsTr("Prefer relative path on playlist export")
+
+                                    Text {
+                                        anchors.fill: parent
+                                        color: Theme.white
+                                        font.pixelSize: 14
+                                        font.weight: Font.Medium
+                                        horizontalAlignment: Text.AlignLeft
+                                        text: parent.label
+                                        verticalAlignment: Text.AlignVCenter
+                                    }
+                                }
+                                RatioChoice {
+                                    id: metadataRelativePathEnabled
+
+                                    readonly property bool enabled: selected == "on"
+
+                                    inactiveColor: Theme.darkGray4
+                                    maxWidth: parent.width * 0.5
+                                    options: ["on", "off"]
+
+                                    onSelectedChanged: root.dirty = true
+                                }
                             }
                         }
                     }
                 }
             }
+            Mixxx.SettingGroup {
+                Layout.bottomMargin: 6
+                Layout.topMargin: 40
+                anchors.left: parent.left
+                anchors.right: parent.right
+                implicitHeight: historyColumn.height
+                label: qsTr("History")
 
-            // ================= 4. PRE-ANÁLISIS DE TONALIDAD & BPM =================
-            Rectangle {
-                Layout.fillWidth: true
-                Layout.preferredHeight: analysisCol.implicitHeight + 24
-                color: Theme.darkGray3
-                radius: 8
-                border.color: "#303440"
-                border.width: 1
+                Column {
+                    id: historyColumn
 
-                ColumnLayout {
-                    id: analysisCol
-                    anchors.fill: parent
-                    anchors.margins: 12
-                    spacing: 10
+                    anchors.left: parent.left
+                    anchors.right: parent.right
 
                     Text {
-                        text: "⚡ Pre-análisis de Colección (BPM & Tonalidad Camelot)"
-                        font.bold: true
+                        color: Theme.white
                         font.pixelSize: 14
-                        color: "#00e5ff"
-                        Layout.fillWidth: true
+                        font.weight: Font.DemiBold
+                        text: qsTr("History")
                     }
-
-                    Text {
-                        text: "Calcula el BPM, rejilla de compases y tono armónico de tus pistas en segundo plano. Al tener todas las pistas pre-analizadas, cargarán al instante sin retardo y el asistente armónico resaltará canciones compatibles."
-                        font.pixelSize: 11
-                        color: "#90a4ae"
-                        wrapMode: Text.WordWrap
-                        Layout.fillWidth: true
+                    Item {
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        height: 10
                     }
+                    Rectangle {
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        color: Theme.darkGray2
+                        implicitHeight: historyPane.implicitHeight + 20
 
-                    RowLayout {
-                        Layout.fillWidth: true
-                        spacing: 12
+                        GridLayout {
+                            id: historyPane
 
-                        Skin.Button {
-                            Layout.preferredHeight: 38
-                            Layout.fillWidth: true
-                            activeColor: "#00e676"
-                            backgroundColor: "#004d40"
-                            normalColor: "#ffffff"
-                            font.bold: true
-                            font.pixelSize: 11
-                            text: "⚡ Analizar Pistas sin BPM/Key"
-                            onClicked: {
-                                if (Mixxx.Library && Mixxx.Library.analyzeUnanalyzedTracks) {
-                                    Mixxx.Library.analyzeUnanalyzedTracks();
+                            anchors.bottomMargin: 10
+                            anchors.fill: parent
+                            anchors.leftMargin: 17
+                            anchors.rightMargin: 17
+                            anchors.topMargin: 10
+                            columnSpacing: 20
+                            columns: historyColumn.width < 800 ? 1 : 2
+                            rowSpacing: 15
+
+                            RowLayout {
+                                Layout.preferredWidth: historyPane.width / historyPane.columns
+
+                                Mixxx.SettingParameter {
+                                    Layout.fillWidth: true
+                                    label: qsTr("Track duplicate distance")
+
+                                    Text {
+                                        anchors.fill: parent
+                                        color: Theme.white
+                                        font.pixelSize: 14
+                                        font.weight: Font.Medium
+                                        horizontalAlignment: Text.AlignLeft
+                                        text: parent.label
+                                        verticalAlignment: Text.AlignVCenter
+                                    }
+                                }
+                                SettingComponents.SpinBox {
+                                    id: historyDuplicateDistanceInput
+
+                                    Layout.alignment: Qt.AlignHCenter
+                                    Layout.leftMargin: 20
+                                    Layout.rightMargin: 20
+                                    max: 1000
+                                    min: 1
+                                    precision: 0
+                                    realValue: 2
+                                    suffix: value > 1 ? qsTr(" tracks") : qsTr(" track")
+
+                                    onValueChanged: root.dirty = true
+                                }
+                            }
+                            RowLayout {
+                                Layout.preferredWidth: historyPane.width / historyPane.columns
+
+                                Mixxx.SettingParameter {
+                                    Layout.fillWidth: true
+                                    label: qsTr("Delete history playlist with less than")
+
+                                    Text {
+                                        anchors.fill: parent
+                                        color: Theme.white
+                                        font.pixelSize: 14
+                                        font.weight: Font.Medium
+                                        horizontalAlignment: Text.AlignLeft
+                                        text: parent.label
+                                        verticalAlignment: Text.AlignVCenter
+                                    }
+                                }
+                                SettingComponents.SpinBox {
+                                    id: historyDeleteLessThanInput
+
+                                    Layout.alignment: Qt.AlignHCenter
+                                    Layout.leftMargin: 20
+                                    Layout.rightMargin: 20
+                                    max: 1000
+                                    min: 1
+                                    precision: 0
+                                    realValue: 2
+                                    suffix: value > 1 ? qsTr(" tracks") : qsTr(" track")
+
+                                    onValueChanged: root.dirty = true
                                 }
                             }
                         }
+                    }
+                }
+            }
+            Mixxx.SettingGroup {
+                Layout.bottomMargin: 6
+                Layout.topMargin: 40
+                anchors.left: parent.left
+                anchors.right: parent.right
+                implicitHeight: searchColumn.height
+                label: qsTr("Search")
 
-                        Skin.Button {
-                            Layout.preferredHeight: 38
-                            Layout.preferredWidth: 180
-                            activeColor: "#ff9100"
-                            backgroundColor: "#263238"
-                            normalColor: "#ffe082"
-                            font.bold: true
-                            font.pixelSize: 11
-                            text: "⟳ Re-analizar Toda la Colección"
-                            onClicked: {
-                                if (Mixxx.Library && Mixxx.Library.analyzeAllTracks) {
-                                    Mixxx.Library.analyzeAllTracks();
+                Column {
+                    id: searchColumn
+
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+
+                    Text {
+                        color: Theme.white
+                        font.pixelSize: 14
+                        font.weight: Font.DemiBold
+                        text: qsTr("Search")
+                    }
+                    Item {
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        height: 10
+                    }
+                    Rectangle {
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        color: Theme.darkGray2
+                        implicitHeight: searchPane.implicitHeight + 20
+
+                        GridLayout {
+                            id: searchPane
+
+                            anchors.bottomMargin: 10
+                            anchors.fill: parent
+                            anchors.leftMargin: 17
+                            anchors.rightMargin: 17
+                            anchors.topMargin: 10
+                            columnSpacing: 20
+                            columns: 2
+                            rowSpacing: 15
+
+                            RowLayout {
+                                Layout.preferredWidth: searchPane.width * 0.5
+
+                                Mixxx.SettingParameter {
+                                    Layout.fillWidth: true
+                                    label: qsTr("Search completion")
+
+                                    Text {
+                                        anchors.fill: parent
+                                        color: Theme.white
+                                        font.pixelSize: 14
+                                        font.weight: Font.Medium
+                                        horizontalAlignment: Text.AlignLeft
+                                        text: parent.label
+                                        verticalAlignment: Text.AlignVCenter
+                                    }
+                                }
+                                RatioChoice {
+                                    id: searchCompletionEnabled
+
+                                    readonly property bool enabled: selected == "on"
+
+                                    inactiveColor: Theme.darkGray4
+                                    maxWidth: parent.width * 0.5
+                                    options: ["on", "off"]
+
+                                    onSelectedChanged: root.dirty = true
+                                }
+                            }
+                            RowLayout {
+                                Layout.preferredWidth: searchPane.width * 0.5
+
+                                Mixxx.SettingParameter {
+                                    Layout.fillWidth: true
+                                    label: qsTr("Search history keyboard shortcuts")
+
+                                    Text {
+                                        anchors.fill: parent
+                                        color: Theme.white
+                                        font.pixelSize: 14
+                                        font.weight: Font.Medium
+                                        horizontalAlignment: Text.AlignLeft
+                                        text: parent.label
+                                        verticalAlignment: Text.AlignVCenter
+                                    }
+                                }
+                                RatioChoice {
+                                    id: searchHistoryKeyboardEnabled
+
+                                    readonly property bool enabled: selected == "on"
+
+                                    inactiveColor: Theme.darkGray4
+                                    maxWidth: parent.width * 0.5
+                                    options: ["on", "off"]
+
+                                    onSelectedChanged: root.dirty = true
+                                }
+                            }
+                            RowLayout {
+                                Layout.preferredWidth: searchPane.width * 0.5
+
+                                Mixxx.SettingParameter {
+                                    Layout.fillWidth: true
+                                    label: qsTr("Search-as-you-type timeout")
+
+                                    Text {
+                                        anchors.fill: parent
+                                        color: Theme.white
+                                        font.pixelSize: 14
+                                        font.weight: Font.Medium
+                                        horizontalAlignment: Text.AlignLeft
+                                        text: parent.label
+                                        verticalAlignment: Text.AlignVCenter
+                                    }
+                                }
+                                SettingComponents.Slider {
+                                    id: searchAsYouTypeTimeoutInput
+
+                                    Layout.preferredWidth: 400
+                                    decimals: 1
+                                    markers: [0.1, 0.5, 1, 5, 10]
+                                    max: 10
+                                    min: 0.1
+                                    suffix: qsTr("sec")
+                                    value: 0.3
+
+                                    onValueChanged: root.dirty = true
+                                }
+                            }
+                            RowLayout {
+                                Layout.preferredWidth: searchPane.width * 0.5
+
+                                Mixxx.SettingParameter {
+                                    Layout.fillWidth: true
+                                    label: qsTr("Pitch slider for fuzz BPM search")
+
+                                    Text {
+                                        anchors.fill: parent
+                                        color: Theme.white
+                                        font.pixelSize: 14
+                                        font.weight: Font.Medium
+                                        horizontalAlignment: Text.AlignLeft
+                                        text: parent.label
+                                        verticalAlignment: Text.AlignVCenter
+                                    }
+                                }
+                                SettingComponents.Slider {
+                                    id: pitchSliderFuzzBPMInput
+
+                                    Layout.preferredWidth: 400
+                                    markers: [0, 25, 50, 75, 100]
+                                    max: 100
+                                    min: 0
+                                    suffix: "%"
+                                    value: 8
+
+                                    onValueChanged: root.dirty = true
                                 }
                             }
                         }
@@ -750,158 +948,69 @@ Category {
             }
         }
     }
+    Item {
+        id: buttonActions
 
-    // ================= BARRA INFERIOR FIJA: ACCIONES Y ESTADO =================
-    Rectangle {
-        id: libraryAction
         anchors.bottom: parent.bottom
         anchors.left: parent.left
         anchors.right: parent.right
-        height: 58
-        color: "#181b24"
-        border.color: "#282d3c"
-        border.width: 1
-        radius: 8
+        height: 20
 
-        RowLayout {
-            anchors.fill: parent
-            anchors.margins: 10
-            spacing: 12
+        SettingComponents.FormButton {
+            activeColor: "#999999"
+            anchors.left: parent.left
+            backgroundColor: "#7D3B3B"
+            opacity: enabled ? 1.0 : 0.5
+            text: qsTr("Reset")
 
-            // Status indicator pill
-            Rectangle {
-                Layout.preferredHeight: 34
-                Layout.preferredWidth: statusRow.implicitWidth + 24
-                radius: 17
-                color: root.isScanning ? "#332200" : (root.dirty ? "#332200" : "#0d2b1a")
-                border.color: root.isScanning ? "#ffb300" : (root.dirty ? "#ffb300" : "#00c853")
-                border.width: 1
-
-                RowLayout {
-                    id: statusRow
-                    anchors.centerIn: parent
-                    spacing: 8
-                    Text {
-                        text: root.isScanning ? "⏳" : (root.dirty ? "●" : "✓")
-                        font.bold: true
-                        font.pixelSize: 13
-                        color: (root.isScanning || root.dirty) ? "#ffb300" : "#00e676"
-                    }
-                    Text {
-                        text: root.isScanning ? qsTr("Escaneando...") : (root.dirty ? qsTr("Cambios pendientes") : qsTr("Colección lista"))
-                        font.bold: true
-                        font.pixelSize: 12
-                        color: (root.isScanning || root.dirty) ? "#ffe082" : "#b9f6ca"
-                    }
-                }
+            onPressed: {
+                root.reset();
             }
+        }
+        Row {
+            anchors.right: parent.right
+            spacing: 10
 
-            Item { Layout.fillWidth: true }
+            Text {
+                id: errorMessage
 
-            // Botón Re-escanear Pistas
-            Rectangle {
-                Layout.preferredHeight: 38
-                Layout.preferredWidth: 160
-                radius: 6
-                color: rescanMouse.pressed ? "#1565c0" : (rescanMouse.containsMouse ? "#1e88e5" : "#0d47a1")
-                border.color: "#64b5f6"
-                border.width: 1
-
-                RowLayout {
-                    anchors.centerIn: parent
-                    spacing: 6
-                    Text { text: "🔄"; font.pixelSize: 12 }
-                    Text {
-                        text: root.isScanning ? qsTr("Escaneando...") : qsTr("Escanear Pistas")
-                        font.bold: true
-                        font.pixelSize: 12
-                        color: "#ffffff"
-                    }
-                }
-
-                MouseArea {
-                    id: rescanMouse
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    cursorShape: Qt.PointingHandCursor
-                    enabled: !root.isScanning
-                    onClicked: {
-                        if (Mixxx.Library && Mixxx.Library.rescanLibrary) {
-                            Mixxx.Library.rescanLibrary();
-                        }
-                    }
-                }
+                Layout.alignment: Qt.AlignVCenter
+                Layout.rightMargin: 16
+                color: "#7D3B3B"
+                text: ""
             }
-
-            // Botón Descartar (visible si hay cambios)
-            Rectangle {
-                Layout.preferredHeight: 38
-                Layout.preferredWidth: 110
-                radius: 6
+            SettingComponents.FormButton {
+                activeColor: "#999999"
+                backgroundColor: "#3F3F3F"
+                opacity: enabled ? 1.0 : 0.5
+                text: qsTr("Cancel")
                 visible: root.dirty
-                color: discardMouse.pressed ? "#424242" : (discardMouse.containsMouse ? "#333333" : "#262626")
-                border.color: "#555555"
-                border.width: 1
 
-                Text {
-                    anchors.centerIn: parent
-                    text: qsTr("Descartar")
-                    font.bold: true
-                    font.pixelSize: 13
-                    color: "#e0e0e0"
-                }
-
-                MouseArea {
-                    id: discardMouse
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: {
-                        root.load();
-                        root.dirty = false;
-                    }
+                onPressed: {
+                    root.load();
                 }
             }
+            SettingComponents.FormButton {
+                activeColor: "#999999"
+                backgroundColor: root.dirty ? "#3a60be" : "#3F3F3F"
+                enabled: root.dirty
+                opacity: enabled ? 1.0 : 0.5
+                text: qsTr("Save")
 
-            // Botón Guardar Preferencias
-            Rectangle {
-                Layout.preferredHeight: 40
-                Layout.preferredWidth: 220
-                radius: 6
-                color: root.dirty
-                       ? (saveMouse.pressed ? "#009624" : (saveMouse.containsMouse ? "#00e676" : "#00c853"))
-                       : (saveMouse.pressed ? "#0d47a1" : (saveMouse.containsMouse ? "#1e88e5" : "#1976d2"))
-                border.color: root.dirty ? "#69f0ae" : "#64b5f6"
-                border.width: 1.5
-
-                RowLayout {
-                    anchors.centerIn: parent
-                    spacing: 8
-
-                    Text {
-                        text: root.dirty ? "💾" : "✓"
-                        font.pixelSize: 14
-                        color: "#ffffff"
-                    }
-
-                    Text {
-                        text: root.dirty ? qsTr("Guardar Librería") : qsTr("Guardado")
-                        font.bold: true
-                        font.pixelSize: 13
-                        color: "#ffffff"
-                    }
-                }
-
-                MouseArea {
-                    id: saveMouse
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: {
-                        root.save();
-                    }
+                onPressed: {
+                    errorMessage.text = "";
+                    root.save();
                 }
             }
         }
+    }
+    Connections {
+        function onRunningChanged(running) {
+            if (!Mixxx.Library.scanner.running) {
+                root.loadSources();
+            }
+        }
+
+        target: Mixxx.Library.scanner
     }
 }

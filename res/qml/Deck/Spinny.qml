@@ -10,63 +10,35 @@ Item {
 
     required property string group
 
-    implicitWidth: 140
-    implicitHeight: 140
-
-    readonly property color deckAccentColor: {
-        switch (root.group) {
-        case "[Channel1]": return "#00b0ff";
-        case "[Channel2]": return "#ff6d00";
-        case "[Channel3]": return "#00e676";
-        case "[Channel4]": return "#e040fb";
-        default: return Theme.accentColor;
-        }
-    }
-
     Mixxx.ControlProxy {
         id: trackLoadedControl
 
         group: root.group
         key: "track_loaded"
     }
-
     Rectangle {
         id: spinner
 
-        anchors.centerIn: parent
-        color: "#181a20"
-        border.color: trackLoadedControl.value ? root.deckAccentColor : "#353842"
-        border.width: 2.5
-        height: Math.min(140, Math.max(80, Math.min(parent.width, parent.height) - 6))
-        width: height
+        color: '#BDBDBD'
+        height: 140
         radius: width / 2
+        width: 140
 
-        // Outer vinyl groove ring
-        Rectangle {
-            anchors.fill: parent
-            anchors.margins: 6
-            color: "transparent"
-            border.color: "#282b35"
-            border.width: 1.5
-            radius: width / 2
+        transform: Rotation {
+            angle: 45
+            origin.x: spinner.width / 2
+            origin.y: spinner.height / 2
         }
 
-        // Inner vinyl groove ring
-        Rectangle {
-            anchors.fill: parent
-            anchors.margins: 14
-            color: "transparent"
-            border.color: "#232630"
-            border.width: 1
-            radius: width / 2
+        anchors {
+            top: parent.top
         }
-
         MixxxControls.Spinny {
             id: spinnyIndicator
 
             anchors.fill: parent
             group: root.group
-            indicatorVisible: trackLoadedControl.value > 0
+            indicatorVisible: trackLoadedControl.value
 
             indicator: Item {
                 height: spinnyIndicator.height
@@ -75,80 +47,77 @@ Item {
                 Rectangle {
                     id: tick
 
-                    color: root.deckAccentColor
-                    height: spinner.height / 2 - 12
-                    width: 3
-                    radius: 1.5
+                    color: '#0E0E0E'
+                    height: 70
+                    width: 2
 
                     anchors {
                         horizontalCenter: parent.horizontalCenter
                         top: parent.top
-                        topMargin: 4
                     }
                 }
             }
         }
+    }
+    Rectangle {
+        id: tempoInfo
 
-        Rectangle {
-            id: tempoInfo
+        anchors.centerIn: spinner
+        clip: true
+        color: '#0E0E0E'
+        height: trackLoadedControl.value ? spinner.height / 4 : 0
+        radius: height / 2 - 5
+        width: spinner.width / 2 - 10
 
-            anchors.centerIn: parent
-            clip: true
-            color: "#0c0d10"
-            border.color: "#282a32"
-            border.width: 1
-            height: Math.round(spinner.height * 0.44)
-            radius: height / 2
-            width: Math.round(spinner.width * 0.62)
+        Behavior on height {
+            SpringAnimation {
+                id: heightAnimation
 
-            Behavior on height {
-                SpringAnimation {
-                    damping: 0.3
-                    duration: 350
-                    spring: 2
-                }
+                damping: 0.2
+                duration: 500
+                spring: 2
             }
+        }
 
-            Column {
-                anchors.centerIn: parent
-                spacing: 1
+        Label {
+            id: tempo
 
-                Label {
-                    id: tempo
+            readonly property real bpm: bpmControl.value
+            readonly property int precision: 2
 
-                    readonly property real bpm: bpmControl.value
+            color: '#BDBDBD'
+            text: `${Math.round(bpm)}.${((bpm % 1) * Math.pow(10, precision)).toFixed().padEnd(precision, "0")}`
 
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    color: "#ffffff"
-                    font.bold: true
-                    font.pixelSize: Math.max(10, Math.round(tempoInfo.height * 0.34))
-                    text: bpm > 0 ? (bpm.toFixed(2) + " BPM") : "--.-- BPM"
+            Mixxx.ControlProxy {
+                id: bpmControl
 
-                    Mixxx.ControlProxy {
-                        id: bpmControl
+                group: root.group
+                key: "bpm"
+            }
+            anchors {
+                horizontalCenter: parent.horizontalCenter
+                top: parent.top
+                topMargin: 2
+            }
+        }
+        Label {
+            id: pitchRatio
 
-                        group: root.group
-                        key: "bpm"
-                    }
-                }
+            readonly property real ratio: ((rateRatioControl.value - 1) * 100).toPrecision(2)
 
-                Label {
-                    id: pitchRatio
+            color: Theme.darkGray3
+            text: ((ratio > 0) ? "+" + ratio.toFixed(2) : ratio.toFixed(2)) + "%"
 
-                    readonly property real ratio: ((rateRatioControl.value - 1) * 100)
+            Mixxx.ControlProxy {
+                id: rateRatioControl
 
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    color: root.deckAccentColor
-                    font.pixelSize: Math.max(8, Math.round(tempoInfo.height * 0.26))
-                    text: ((ratio > 0) ? "+" + ratio.toFixed(2) : ratio.toFixed(2)) + "%"
-
-                    Mixxx.ControlProxy {
-                        id: rateRatioControl
-
-                        group: root.group
-                        key: "rate_ratio"
-                    }
-                }
+                group: root.group
+                key: "rate_ratio"
+            }
+            anchors {
+                bottom: parent.bottom
+                bottomMargin: 2
+                horizontalCenter: parent.horizontalCenter
             }
         }
     }

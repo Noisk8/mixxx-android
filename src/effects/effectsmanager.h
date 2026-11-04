@@ -20,6 +20,10 @@ class EngineEffectsManager;
 /// responsible for specific parts of the effects system.
 class EffectsManager {
   public:
+    /// Writes the effect units and chain presets to effects.xml. Called on
+    /// shutdown, and on Android also when the app goes to the background,
+    /// because the process is usually killed there instead of shut down.
+    void saveEffectsXml();
     EffectsManager(UserSettingsPointer pConfig,
             std::shared_ptr<ChannelHandleFactory> pChannelHandleFactory);
 
@@ -91,7 +95,6 @@ class EffectsManager {
     void readEffectsXml();
     void readEffectsXmlSingleDeck(const QString& deckGroup);
     void readEffectsXmlSingleDeckStem(const QString& deckStemGroup);
-    void saveEffectsXml();
 
     QSet<ChannelHandleAndGroup> m_registeredInputChannels;
     QSet<ChannelHandleAndGroup> m_registeredOutputChannels;

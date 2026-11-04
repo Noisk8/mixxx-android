@@ -78,6 +78,9 @@ class QmlLibraryTrackListModel : public QIdentityProxyModel {
     Q_INVOKABLE void sort(int column, Qt::SortOrder order) override;
 
   private:
+    /// Maps a ColumnCache column to the column of the source model
+    int sourceColumn(int column) const;
+
     std::vector<parented_ptr<QmlLibraryTrackListColumn>> m_columns;
 
     static void parent_qlist_append(

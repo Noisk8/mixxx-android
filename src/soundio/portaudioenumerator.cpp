@@ -22,6 +22,15 @@
 #include <sys/syscall.h>
 
 #include <QJniObject>
+
+#include <cstdlib>
+
+/// Called by PortAudio instead of malloc() (see MixxxAndroid.cmake): its
+/// Oboe host API allocates strlen(name) bytes for a copy of each device name
+/// and strcpy() then writes the terminating null byte past the end.
+extern "C" void* mixxx_portaudio_malloc(size_t size) {
+    return std::malloc(size + 1);
+}
 #endif
 
 typedef PaError (*SetJackClientName)(const char* name);
@@ -95,13 +104,16 @@ void PortAudioEnumerator::initialize() {
                 return tr("Microphone");
             case 25: // AudioDeviceInfo.TYPE_REMOTE_SUBMIX:
                 return tr("Mixed");
-            case 8:  // AudioDeviceInfo.TYPE_BLUETOOTH_A2DP
+            // The suffixes below let the QML presets tell devices apart
             case 11: // AudioDeviceInfo.TYPE_USB_DEVICE
             case 22: // AudioDeviceInfo.TYPE_USB_HEADSET
-            case 13: // AudioDeviceInfo.TYPE_DOCK
             case 12: // AudioDeviceInfo.TYPE_USB_ACCESSORY
+                return QStringLiteral("USB");
+            case 8:  // AudioDeviceInfo.TYPE_BLUETOOTH_A2DP
             case 26: // AudioDeviceInfo.TYPE_BLE_HEADSET
             case 27: // AudioDeviceInfo.TYPE_BLE_SPEAKER
+                return QStringLiteral("Bluetooth");
+            case 13: // AudioDeviceInfo.TYPE_DOCK
             case 23: // AudioDeviceInfo.TYPE_HEARING_AID
                 // supported, but no friendly name
                 return QStringLiteral();
@@ -151,12 +163,21 @@ void PortAudioEnumerator::initialize() {
                         channelCount = *it;
                     }
                 }
+                // An empty list means the device converts any rate. Otherwise
+                // prefer the system's native rate (no resampling), then the
+                // usual DJ rates, before falling back to the first one listed.
                 auto sampleRates = device->callMethod<QJniArray<jint>>("getSampleRates");
                 int sampleRate = defaultNativeSampleRate;
                 if (!sampleRates.isEmpty()) {
-                    auto it = sampleRates.cbegin();
-                    if (*it > 0) {
-                        sampleRate = *it;
+                    const QList<jint> rates(sampleRates.cbegin(), sampleRates.cend());
+                    if (!rates.contains(defaultNativeSampleRate)) {
+                        if (rates.contains(48000)) {
+                            sampleRate = 48000;
+                        } else if (rates.contains(44100)) {
+                            sampleRate = 44100;
+                        } else if (rates.first() > 0) {
+                            sampleRate = rates.first();
+                        }
                     }
                 }
                 qInfo() << "audioManager - Registering Oboe device:"
@@ -208,21 +229,9 @@ void PortAudioEnumerator::initialize() {
     }).waitForFinished();
     PaOboe_SetNumberOfBuffers(4);
 
-    // The following snippets pins the audio thread to a performance core
-    int32_t thread32 = gettid();
-    uint mask = 0b10000;
-    cpu_set_t cpuset;
-    CPU_ZERO(&cpuset);
-    for (uint32_t i = 0; i < 32; ++i) {
-        if ((mask >> i) & 1) {
-            CPU_SET(i, &cpuset);
-        }
-    }
-    if (sched_setaffinity(thread32, sizeof(cpu_set_t), &cpuset) != 0) {
-        __android_log_print(ANDROID_LOG_WARN, "mixxx", "Error setting CPU affinity: %d", errno);
-    } else {
-        __android_log_print(ANDROID_LOG_VERBOSE, "mixxx", "CPU affinity set");
-    }
+    // Note: no CPU affinity is set here. Pinning this thread used to be
+    // inherited by every thread started afterwards (including the engine and
+    // audio callback threads), confining them to a single, possibly slow core.
 #endif
     err = Pa_Initialize();
     m_initialized = true;
@@ -285,6 +294,13 @@ void PortAudioEnumerator::initialize() {
         }
     }
 
+#ifdef __ANDROID_USB_AUDIO__
+    m_androidUsbDevices.clear();
+    // At startup the audio can only be configured once the permission for
+    // the sound card is known
+    refreshAndroidUsbDevices(nullptr, true);
+#endif
+
     for (PaHostApiIndex i = 0; i < Pa_GetHostApiCount(); i++) {
         const PaHostApiInfo* api = Pa_GetHostApiInfo(i);
         if (api && std::strcmp(api->name, "skeleton implementation")) {
@@ -298,6 +314,14 @@ void PortAudioEnumerator::initialize() {
     }
 }
 
+#ifdef __ANDROID_USB_AUDIO__
+bool PortAudioEnumerator::refreshAndroidUsbDevices(
+        std::vector<SoundDevicePointer>* pRemoved, bool waitForPermission) {
+    return m_androidUsbDevices.refresh(
+            m_pConfig, m_pSoundManager, &m_devices, pRemoved, waitForPermission);
+}
+#endif
+
 std::vector<SoundDevicePointer> PortAudioEnumerator::queryDevices() const {
     if (!m_initialized) {
         return {};
@@ -307,6 +331,11 @@ std::vector<SoundDevicePointer> PortAudioEnumerator::queryDevices() const {
     for (const auto& device : m_devices) {
         devices.push_back(device);
     }
+#ifdef __ANDROID_USB_AUDIO__
+    for (const auto& device : m_androidUsbDevices.devices()) {
+        devices.push_back(device);
+    }
+#endif
 
     return devices;
 }
@@ -342,6 +371,9 @@ void PortAudioEnumerator::deinitialize() {
     }
 
     m_devices.clear();
+#ifdef __ANDROID_USB_AUDIO__
+    m_androidUsbDevices.clear();
+#endif
 
     PaError err = Pa_Terminate();
     if (err == paNoError) {

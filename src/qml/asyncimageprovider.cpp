@@ -2,6 +2,9 @@
 
 #include "library/coverartcache.h"
 #include "moc_asyncimageprovider.cpp"
+#ifdef Q_OS_ANDROID
+#include "qml/librarycoverloader.h"
+#endif
 #include "track/track.h"
 
 namespace {
@@ -33,6 +36,13 @@ void AsyncImageResponse::run() {
         return;
     }
     const QString trackLocation = AsyncImageProvider::coverArtUrlIdToTrackLocation(m_id);
+#ifdef Q_OS_ANDROID
+    // Loading the whole track would block the main thread
+    if (mixxx::qml::loadLibraryCover(m_id, trackLocation, m_requestedSize, &m_image)) {
+        emit finished();
+        return;
+    }
+#endif
     const auto trackRef = TrackRef::fromFilePath(trackLocation);
 
     // TODO: Only load CoverInfo from TrackCollectionManager

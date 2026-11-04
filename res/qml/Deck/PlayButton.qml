@@ -10,7 +10,7 @@ Skin.ControlButton {
 
     property bool minimized: false
 
-    activeColor: "#00e676"
+    activeColor: Theme.deckActiveColor
     key: "play"
     toggleable: trackLoadedControl.value == 1
 
@@ -20,32 +20,32 @@ Skin.ControlButton {
         Shape {
             anchors.horizontalCenter: parent.horizontalCenter
             anchors.top: parent.top
-            anchors.topMargin: 4
+            anchors.topMargin: 6
             antialiasing: true
-            height: 28
+            height: 32
             layer.enabled: true
             layer.samples: 4
             visible: !root.minimized
-            width: 26
+            width: 30
 
             ShapePath {
                 capStyle: ShapePath.RoundCap
-                fillColor: root.value > 0 ? "#00e676" : (trackLoadedControl.value > 0 ? "#ffffff" : Theme.buttonDisableColor)
+                fillColor: trackLoadedControl.value > 0 ? Theme.buttonActiveColor : Theme.buttonDisableColor
                 fillRule: ShapePath.WindingFill
-                startX: 4
+                startX: 5
                 startY: 0
                 strokeColor: 'transparent'
 
                 PathLine {
-                    x: 24
-                    y: 14
+                    x: 30
+                    y: 16
                 }
                 PathLine {
-                    x: 4
-                    y: 28
+                    x: 5
+                    y: 32
                 }
                 PathLine {
-                    x: 4
+                    x: 5
                     y: 0
                 }
             }
@@ -56,7 +56,7 @@ Skin.ControlButton {
             anchors.bottom: parent.bottom
             anchors.bottomMargin: 4
             anchors.horizontalCenter: parent.horizontalCenter
-            color: root.value > 0 ? "#00e676" : (trackLoadedControl.value > 0 ? "#ffffff" : "#626262")
+            color: '#626262'
             font.bold: true
             font.capitalization: Font.AllUppercase
             font.family: Theme.fontFamily

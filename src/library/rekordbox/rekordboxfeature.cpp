@@ -11,6 +11,7 @@
 #include <QString>
 #include <QStringList>
 #include <QTextCodec>
+#include <QTimeZone>
 #include <QtDebug>
 
 #include "engine/engine.h"
@@ -29,6 +30,13 @@
 #include "util/color/color.h"
 #include "util/db/dbconnectionpooled.h"
 #include "util/db/dbconnectionpooler.h"
+#include "util/removablestorage.h"
+#ifdef __ANDROID_USB_DRIVE__
+#include "library/usbdrive/androidusbdrive.h"
+#endif
+#ifdef Q_OS_ANDROID
+#include "library/rekordbox/rekordboxandroid.h"
+#endif
 #include "util/sandbox.h"
 #include "waveform/waveform.h"
 #include "widget/wlibrary.h"
@@ -105,21 +113,29 @@ bool createLibraryTable(QSqlDatabase& database, const QString& tableName) {
             "    year INTEGER,"
             "    genre TEXT,"
             "    tracknumber TEXT,"
-            "    location TEXT UNIQUE,"
+            // Not UNIQUE, nor analyze_path: a Rekordbox collection can list
+            // the same file twice, and playlists may use either entry
+            "    location TEXT,"
             "    comment TEXT,"
             "    duration INTEGER,"
             "    bitrate TEXT,"
             "    bpm FLOAT,"
             "    key TEXT,"
             "    rating INTEGER,"
-            "    analyze_path TEXT UNIQUE,"
+            "    analyze_path TEXT,"
             "    device TEXT,"
-            "    color INTEGER"
+            "    color INTEGER,"
+            "    datetime_added TEXT"
             ");");
 
     if (!query.exec()) {
         LOG_FAILED_QUERY(query);
         return false;
+    }
+    // Tracks are looked up by their file, e.g. when a deck loads one
+    if (!query.exec("CREATE INDEX IF NOT EXISTS " + tableName + "_location ON " +
+                tableName + " (location)")) {
+        LOG_FAILED_QUERY(query);
     }
 
     return true;
@@ -217,6 +233,32 @@ QList<TreeItem*> findRekordboxDevices() {
             foundDevices << pFoundDevice;
         }
     }
+#elif defined(__ANDROID__)
+    // USB drives are mounted under /storage
+    const QFileInfoList devices = mixxx::removableStorageRoots();
+    for (const QFileInfo& device : devices) {
+#ifdef __ANDROID_USB_DRIVE__
+        // Copies the database of drives that Mixxx reads itself
+        mixxx::usbdrive::prepareFiles(device.filePath(),
+                {QStringLiteral("PIONEER/rekordbox/export.pdb"),
+                        QStringLiteral(".PIONEER/rekordbox/export.pdb")});
+#endif
+        if (!findRekordboxPdbPath(device.filePath()).isEmpty()) {
+            // The devices are identified by their label, which must be unique
+            const QString baseLabel = mixxx::removableStorageLabel(device);
+            QString label = baseLabel;
+            for (int i = 2; std::any_of(foundDevices.cbegin(),
+                         foundDevices.cend(),
+                         [&label](const TreeItem* pItem) { return pItem->getLabel() == label; });
+                    ++i) {
+                label = QStringLiteral("%1 (%2)").arg(baseLabel).arg(i);
+            }
+            auto* pFoundDevice = new TreeItem(
+                    std::move(label),
+                    QVariant(QList<QString>{device.filePath(), IS_RECORDBOX_DEVICE}));
+            foundDevices << pFoundDevice;
+        }
+    }
 #elif defined(__LINUX__)
     // To get devices on Linux, we look for directories under /media and
     // /run/media/$USER.
@@ -237,8 +279,17 @@ QList<TreeItem*> findRekordboxDevices() {
 
     foreach (QFileInfo device, devices) {
         if (!findRekordboxPdbPath(device.filePath()).isEmpty()) {
+            // The devices are identified by their label, which must be unique
+            const QString baseLabel = mixxx::removableStorageLabel(device);
+            QString label = baseLabel;
+            for (int i = 2; std::any_of(foundDevices.cbegin(),
+                         foundDevices.cend(),
+                         [&label](const TreeItem* pItem) { return pItem->getLabel() == label; });
+                    ++i) {
+                label = QStringLiteral("%1 (%2)").arg(baseLabel).arg(i);
+            }
             auto* pFoundDevice = new TreeItem(
-                    device.fileName(),
+                    std::move(label),
                     QVariant(QList<QString>{device.filePath(), IS_RECORDBOX_DEVICE}));
             foundDevices << pFoundDevice;
         }
@@ -408,6 +459,13 @@ void insertTrack(
     query.bindValue(":color",
             mixxx::RgbColor::toQVariant(
                     colorFromID(static_cast<int>(track->color_id()))));
+    // The day the track was added to the Rekordbox collection, e.g.
+    // "2023-05-12". Noon UTC shows the same day in every time zone.
+    const QDate dateAdded = QDate::fromString(getText(track->date_added()), Qt::ISODate);
+    query.bindValue(":datetime_added",
+            dateAdded.isValid()
+                    ? QVariant(QDateTime(dateAdded, QTime(12, 0), QTimeZone::UTC))
+                    : QVariant());
 
     if (!query.exec()) {
         LOG_FAILED_QUERY(query);
@@ -485,10 +543,10 @@ QString parseDeviceDB(mixxx::DbConnectionPoolPtr dbConnectionPool, TreeItem* dev
     query.prepare("INSERT INTO " + kRekordboxLibraryTable +
             " (rb_id, artist, title, album, year,"
             "genre,comment,tracknumber,bpm, bitrate,duration, location,"
-            "rating,key,analyze_path,device,color) VALUES (:rb_id, :artist, "
+            "rating,key,analyze_path,device,color,datetime_added) VALUES (:rb_id, :artist, "
             ":title, :album, :year,:genre,"
             ":comment, :tracknumber,:bpm, :bitrate,:duration, :location,"
-            ":rating,:key,:analyze_path,:device,:color)");
+            ":rating,:key,:analyze_path,:device,:color,:datetime_added)");
 
     int audioFilesCount = 0;
 
@@ -1286,6 +1344,9 @@ TrackPointer RekordboxPlaylistModel::getTrack(const QModelIndex& index) const {
         readAnalyze(track, sampleRate, timingOffset, true, anlzPath);
         readAnalyze(track, sampleRate, timingOffset, false, anlzPathExt);
     } else {
+        // Without an .EXT, the .DAT has the beatgrid and the cues, which
+        // readAnalyze() reads in two passes
+        readAnalyze(track, sampleRate, timingOffset, true, anlzPath);
         readAnalyze(track, sampleRate, timingOffset, false, anlzPath);
     }
 
@@ -1343,6 +1404,7 @@ RekordboxFeature::RekordboxFeature(
             LIBRARYTABLE_BPM,
             LIBRARYTABLE_KEY,
             LIBRARYTABLE_COLOR,
+            LIBRARYTABLE_DATETIMEADDED,
             REKORDBOX_ANALYZE_PATH};
 
     const QStringList searchColumns = {
@@ -1389,6 +1451,9 @@ RekordboxFeature::RekordboxFeature(
             &RekordboxFeature::onTracksFound);
     // initialize the model
     m_pSidebarModel->setRootItem(TreeItem::newRoot(this));
+#ifdef Q_OS_ANDROID
+    mixxx::android::watchUsbDevices(this);
+#endif
 }
 
 RekordboxFeature::~RekordboxFeature() {
@@ -1537,14 +1602,14 @@ void RekordboxFeature::activateChild(const QModelIndex& index) {
     if (doParseDeviceDB) {
         qDebug() << "Parse Rekordbox Device DB: " << playlist;
 
+        // This device is now a playlist element, future activations should treat is
+        // as such. Changed before the worker thread starts reading the item.
+        data[1] = QVariant(IS_NOT_RECORDBOX_DEVICE);
+        item->setData(QVariant(data));
+
         // Let a worker thread do the XML parsing
         m_tracksFuture = QtConcurrent::run(parseDeviceDB, static_cast<Library*>(parent())->dbConnectionPool(), item);
         m_tracksFutureWatcher.setFuture(m_tracksFuture);
-
-        // This device is now a playlist element, future activations should treat is
-        // as such
-        data[1] = QVariant(IS_NOT_RECORDBOX_DEVICE);
-        item->setData(QVariant(data));
     } else {
         qDebug() << "Activate Rekordbox Playlist: " << playlist;
         m_pRekordboxPlaylistModel->setPlaylist(playlist);
@@ -1645,3 +1710,7 @@ void RekordboxFeature::onTracksFound() {
     m_pRekordboxPlaylistModel->setPlaylist(devicePlaylist);
     emit showTrackModel(m_pRekordboxPlaylistModel);
 }
+
+#ifdef Q_OS_ANDROID
+#include "library/rekordbox/rekordboxandroid.inc"
+#endif

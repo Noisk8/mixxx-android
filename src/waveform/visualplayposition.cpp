@@ -173,8 +173,16 @@ bool VisualPlayPosition::getPlaySlipAtNextVSync(
         }
     }
     if (i >= 3) {
-        // No valid data available e.g, track ejected
-        return false;
+        // All buffers look outdated. This happens with a vsync time source
+        // that lags behind the audio callbacks (e.g. on Android). Failing here
+        // made callers that ignore the result draw position 0 for a frame, so
+        // the waveform flickered to the start of the track. Use the newest
+        // engine position without interpolation instead.
+        if (!m_data.getAt(0, &data)) {
+            // No valid data available e.g, track ejected
+            return false;
+        }
+        offsetBuffers = 0;
     }
 
     const double offsetSteps = data.m_positionStep * offsetBuffers;

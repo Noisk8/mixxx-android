@@ -42,7 +42,6 @@ class ControllerManager : public QObject {
 
     /// Prevent other parts of Mixxx from having to manually connect to our slots
     void setUpDevices() { emit requestSetUpDevices(); };
-    void reconnectAndroidMidi() { emit requestReconnectAndroidMidi(); }
 
     static QList<QString> getMappingPaths(UserSettingsPointer pConfig);
 
@@ -50,7 +49,6 @@ class ControllerManager : public QObject {
     void initialized();
     void devicesChanged();
     void requestSetUpDevices();
-    void requestReconnectAndroidMidi();
     void requestShutdown();
     void requestInitialize();
     void mappingApplied(bool applied);
@@ -68,14 +66,15 @@ class ControllerManager : public QObject {
     /// only runs on start-up but maybe should instead be signaled by the
     /// preferences dialog on apply, and only open/close changed devices
     void slotSetUpDevices();
-    void slotReconnectAndroidMidi();
     void slotShutdown();
     /// Calls poll() on all devices that have isPolling() true.
     void slotPollDevices();
 
   private:
-    void updateControllerList(bool androidMidiOnly = false);
-    void setUpDevicesInternal(bool androidMidiOnly);
+    void updateControllerList();
+    /// Assigns and enables a system mapping matching the controller name if
+    /// the controller has never been configured. Returns true on success.
+    bool autoAssignMapping(Controller* pController);
     void startPolling();
     void stopPolling();
     void pollIfAnyControllersOpen();
@@ -87,6 +86,9 @@ class ControllerManager : public QObject {
     // because the CM is moved to its own thread and runs its own event loop.
     std::unique_ptr<ControllerLearningEventFilter> m_pControllerLearningEventFilter;
     QTimer m_pollTimer;
+    /// Debounces hotplug notifications, which arrive in bursts.
+    QTimer m_hotplugTimer;
+    int m_hotplugListenerId = 0;
     mutable QMutex m_mutex;
     /// Guarded by m_mutex for main-thread reads.
     /// Written/iterated only on the ControllerManager thread

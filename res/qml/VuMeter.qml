@@ -17,6 +17,8 @@ Rectangle {
 
         group: root.group
         key: root.key
+        // Drawn on the ticks of the frame clock, with the waveforms
+        updateInterval: 33
     }
 
     Item {

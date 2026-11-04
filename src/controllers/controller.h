@@ -1,9 +1,11 @@
 #pragma once
 
 #include <QElapsedTimer>
+#include <QMutex>
 
 #include "controllers/controllermappinginfo.h"
 #include "controllers/legacycontrollermapping.h"
+#include "util/compatibility/qmutex.h"
 #include "util/duration.h"
 #include "util/runtimeloggingcategory.h"
 
@@ -48,6 +50,9 @@ class Controller : public QObject {
     std::shared_ptr<LegacyControllerMapping> getMapping() {
         // return the unused mutable copy of the mapping, that can be edited in the GUI thread
         // and than adopted again via setMapping()
+        // The GUI thread reads this while the controller thread may assign it,
+        // and copying a shared_ptr concurrently with an assignment is a data race.
+        const auto locker = lockMutex(&m_mutableMappingMutex);
         return m_pMutableMapping;
     }
 
@@ -168,7 +173,16 @@ class Controller : public QObject {
     const RuntimeLoggingCategory m_logBase;
     const RuntimeLoggingCategory m_logInput;
     const RuntimeLoggingCategory m_logOutput;
+    /// Must only be assigned through setMutableMapping()
     std::shared_ptr<LegacyControllerMapping> m_pMutableMapping;
+
+    void setMutableMapping(std::shared_ptr<LegacyControllerMapping> pMapping) {
+        const auto locker = lockMutex(&m_mutableMappingMutex);
+        m_pMutableMapping = std::move(pMapping);
+    }
+
+  private:
+    mutable QMutex m_mutableMappingMutex;
 
   public:
     // This must be reimplemented by sub-classes desiring to send raw bytes to a

@@ -29,6 +29,9 @@
 #include "nativeeventhandlerwin.h"
 #endif
 #include "skin/skin.h"
+#ifdef Q_OS_ANDROID
+#include "util/androidbackup.h"
+#endif
 #include "skin/skinloader.h"
 #include "sources/soundsourceproxy.h"
 #include "util/cmdlineargs.h"
@@ -65,7 +68,11 @@ int runMixxx(MixxxApplication* pApp, const CmdlineArgs& args) {
     auto pCoreServices = std::make_shared<mixxx::CoreServices>(args, pApp);
 #ifdef MIXXX_USE_QML
     QString mainQmlFilePath;
+#if defined(Q_OS_ANDROID)
+    bool loadQml = true;
+#else
     bool loadQml = args.isQml();
+#endif
     if (!loadQml && args.getDeveloper()) {
         mixxx::skin::SkinLoader skinLoader(pCoreServices->getSettings());
         const mixxx::skin::SkinPointer pSkin = skinLoader.getConfiguredSkin();
@@ -254,6 +261,12 @@ int main(int argc, char * argv[]) {
     if (!args.parse(argc, argv)) {
         return kParseCmdlineArgsErrorExitCode;
     }
+
+#ifdef Q_OS_ANDROID
+    // Swaps in a backup chosen in the preferences, before anything reads the
+    // settings folder
+    mixxx::android::applyPendingRestore(args.getSettingsPath());
+#endif
 
     // Set a unique thread object name
     //

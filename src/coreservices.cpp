@@ -46,10 +46,12 @@
 #include "qml/qmlconfigproxy.h"
 #include "qml/qmleffectsmanagerproxy.h"
 #include "qml/qmllibraryproxy.h"
+#ifdef __ANDROID__
+#include "qml/qmlmobilesingletons.h"
+#endif
 #include "qml/qmlplayermanagerproxy.h"
 #include "qml/qmlpreferencesproxy.h"
 #include "qml/qmlsoundmanagerproxy.h"
-#include "qml/qmlstreamingproxy.h"
 #endif
 #include "soundio/soundmanager.h"
 #include "sources/soundsourceproxy.h"
@@ -72,6 +74,7 @@
 #include <X11/XKBlib.h>
 #endif
 #if defined(Q_OS_ANDROID)
+#include "util/androidcrashreport.h"
 #include "util/androidpermissions.h"
 #endif
 
@@ -91,7 +94,13 @@ namespace {
 const mixxx::Logger kLogger("CoreServices");
 constexpr int kMicrophoneCount = 4;
 constexpr int kAuxiliaryCount = 4;
+#ifdef __ANDROID__
+// Mappings like the DDJ-400 one ask for 16 samplers when they start. They
+// are created here, on the main thread, so controllers don't have to.
+constexpr int kSamplerCount = 16;
+#else
 constexpr int kSamplerCount = 4;
+#endif
 
 #define CLEAR_AND_CHECK_DELETED(x) clearHelper(x, #x);
 
@@ -475,11 +484,26 @@ void CoreServices::initializeLogging() {
     if (m_cmdlineArgs.getDebugAssertBreak()) {
         logFlags.setFlag(mixxx::LogFlag::DebugAssertBreak);
     }
+#ifdef Q_OS_ANDROID
+    // The log is the only trace of a crash on Android, see
+    // util/androidcrashreport.h. Only critical messages are flushed at once:
+    // flushing every line (e.g. warnings of the audio thread) made the audio
+    // and the UI stutter.
+    const auto logLevel = std::max(m_cmdlineArgs.getLogLevel(), mixxx::LogLevel::Info);
+    const auto logFlushLevel = m_cmdlineArgs.getLogFlushLevel();
+#else
+    const auto logLevel = m_cmdlineArgs.getLogLevel();
+    const auto logFlushLevel = m_cmdlineArgs.getLogFlushLevel();
+#endif
     mixxx::Logging::initialize(
             m_pSettingsManager->settings()->getSettingsPath(),
-            m_cmdlineArgs.getLogLevel(),
-            m_cmdlineArgs.getLogFlushLevel(),
+            logLevel,
+            logFlushLevel,
             logFlags);
+#ifdef Q_OS_ANDROID
+    mixxx::android::installCrashReporter();
+    mixxx::android::exportPreviousLog(m_pSettingsManager->settings()->getSettingsPath());
+#endif
 }
 
 void CoreServices::initialize(QApplication* pApp) {
@@ -791,11 +815,12 @@ void CoreServices::initializeQMLSingletons() {
     mixxx::qml::QmlApplicationProxy::registerVinylControlManager(
             getVinylControlManager().get());
     mixxx::qml::QmlPlayerManagerProxy::registerPlayerManager(getPlayerManager());
-    mixxx::qml::QmlStreamingProxy::registerPlayerManager(getPlayerManager());
-    mixxx::qml::QmlStreamingProxy::registerUserSettings(getSettings());
     mixxx::qml::QmlConfigProxy::registerUserSettings(getSettings());
     mixxx::qml::QmlLibraryProxy::registerLibrary(getLibrary());
     mixxx::qml::QmlLibraryProxy::registerKeyboardEventFilter(getKeyboardEventFilter());
+#ifdef __ANDROID__
+    mixxx::qml::registerMobileQmlSingletons(this);
+#endif
     mixxx::qml::QmlSoundManagerProxy::registerManager(getSoundManager());
     mixxx::qml::QmlControllerManagerProxy::registerManager(
             getControllerManager(),
@@ -898,8 +923,9 @@ void CoreServices::finalize() {
     mixxx::qml::QmlApplicationProxy::registerKeyboardEventFilter(nullptr);
     mixxx::qml::QmlApplicationProxy::registerVinylControlManager(nullptr);
     mixxx::qml::QmlPlayerManagerProxy::registerPlayerManager(nullptr);
-    mixxx::qml::QmlStreamingProxy::registerPlayerManager(nullptr);
-    mixxx::qml::QmlStreamingProxy::registerUserSettings(nullptr);
+#ifdef __ANDROID__
+    mixxx::qml::unregisterMobileQmlSingletons();
+#endif
     mixxx::qml::QmlConfigProxy::registerUserSettings(nullptr);
     mixxx::qml::QmlLibraryProxy::registerLibrary(nullptr);
     mixxx::qml::QmlLibraryProxy::registerKeyboardEventFilter(nullptr);

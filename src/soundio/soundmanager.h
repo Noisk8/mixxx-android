@@ -23,6 +23,7 @@
 class EngineMixer;
 class ControlObject;
 class PipewireEnumerator;
+class SoundManagerAndroid;
 
 #define SOUNDMANAGER_DISCONNECTED 0
 #define SOUNDMANAGER_CONNECTING 1
@@ -211,4 +212,8 @@ class SoundManager : public QObject {
     QSharedPointer<EngineNetworkStream> m_pNetworkStream;
     QSharedPointer<SoundDeviceNetwork> m_pNetworkDevice;
     bool m_pipewireEnabled;
+#ifdef Q_OS_ANDROID
+    friend class SoundManagerAndroid;
+    SoundManagerAndroid* m_pAndroid = nullptr;
+#endif
 };

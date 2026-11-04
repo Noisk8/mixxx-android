@@ -12,6 +12,7 @@
 #include "library/browse/browsefeature.h"
 #include "library/dateformatbroadcaster.h"
 #ifdef __ENGINEPRIME__
+#include "library/enginedj/enginedjfeature.h"
 #include "library/export/libraryexporter.h"
 #endif
 #include "library/externaltrackcollection.h"
@@ -219,6 +220,13 @@ Library::Library(
                 ConfigKey(kConfigGroup, "ShowSeratoLibrary"), true)) {
         addFeature(new SeratoFeature(this, m_pConfig));
     }
+
+#ifdef __ENGINEPRIME__
+    if (m_pConfig->getValue(
+                ConfigKey(kConfigGroup, "ShowEngineDJLibrary"), true)) {
+        addFeature(new EngineDJFeature(this, m_pConfig));
+    }
+#endif
 
     for (const auto& externalTrackCollection : m_pTrackCollectionManager->externalCollections()) {
         auto* feature = externalTrackCollection->newLibraryFeature(this, m_pConfig);

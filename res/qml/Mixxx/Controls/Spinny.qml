@@ -1,6 +1,5 @@
 import Mixxx 1.0 as Mixxx
-// QtQuick 2.15 is required for cursorShape on pointer handlers below.
-import QtQuick 2.15
+import QtQuick 2.12
 import QtQuick.Controls 2.12
 
 Item {
@@ -62,7 +61,7 @@ Item {
 
         group: root.group
         key: "scratch_position_enable"
-        value: scratchHandler.active
+        value: scratchArea.pressed
     }
 
     Mixxx.ControlProxy {
@@ -159,52 +158,37 @@ Item {
         }
     }
 
-    // Keeps the grab cursor on desktop, where the PointHandler below only
-    // sets it while a button is held.
-    HoverHandler {
-        cursorShape: scratchHandler.active ? Qt.ClosedHandCursor : Qt.OpenHandCursor
-        enabled: trackLoadedControl.value > 0
-    }
+    MouseArea {
+        id: scratchArea
 
-    // A PointHandler tracks one touch point (or the mouse) on its own, so
-    // both decks can be scratched at the same time with two fingers. A
-    // MouseArea would only ever see the single synthesized mouse pointer.
-    PointHandler {
-        id: scratchHandler
+        anchors.fill: parent
+        enabled: trackLoadedControl.value > 0
+        cursorShape: pressed ? Qt.ClosedHandCursor : Qt.OpenHandCursor
 
         property real lastAngle: 0
 
-        function getAngle(position) {
-            return Math.atan2(position.y - root.height / 2, position.x - root.width / 2);
+        function getAngle(x, y) {
+            return Math.atan2(y - height / 2, x - width / 2);
         }
 
-        acceptedButtons: Qt.LeftButton
-        enabled: trackLoadedControl.value > 0
-        cursorShape: active ? Qt.ClosedHandCursor : Qt.OpenHandCursor
-
-        onActiveChanged: {
-            if (scratchHandler.active) {
-                scratchPositionControl.value = 0.0;
-                scratchHandler.lastAngle = scratchHandler.getAngle(scratchHandler.point.position);
-            }
+        onPressed: {
+            scratchPositionControl.value = 0.0;
+            lastAngle = getAngle(mouse.x, mouse.y);
         }
 
-        onPointChanged: {
-            if (!scratchHandler.active) {
-                return;
-            }
+        onPositionChanged: {
             if (isNaN(sampleRateControl.value) || sampleRateControl.value <= 0) {
                 console.error(`Could not find a valid sample rate on group ${root.group}, got ${sampleRateControl.value}`);
                 return;
             }
-            const currentAngle = scratchHandler.getAngle(scratchHandler.point.position);
-            let delta = currentAngle - scratchHandler.lastAngle;
+            var currentAngle = getAngle(mouse.x, mouse.y);
+            var delta = currentAngle - lastAngle;
 
             // Normalize to [-π, π] to handle atan2 boundary crossing
             while (delta > Math.PI) delta -= 2 * Math.PI;
             while (delta < -Math.PI) delta += 2 * Math.PI;
 
-            scratchHandler.lastAngle = currentAngle;
+            lastAngle = currentAngle;
 
             // Convert angular delta (radians) to samples:
             // samples = radians * (frameRate * 2) / (2π * rps)

@@ -55,6 +55,8 @@ Mixxx.WaveformOverview {
 
         group: root.group
         key: "playposition"
+        // Changes with every audio buffer; this is enough for the screen
+        updateInterval: 33
     }
     Text {
         x: 10
@@ -96,6 +98,8 @@ Mixxx.WaveformOverview {
             color: root.playPositionMarkerColor
             group: root.group
             key: "playposition"
+            // Changes with every audio buffer; this is enough for the screen
+            updateInterval: 33
         }
     }
     MouseArea {

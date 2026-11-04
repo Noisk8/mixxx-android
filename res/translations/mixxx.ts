@@ -18404,4 +18404,89 @@ Please select an input device in the sound hardware preferences first.</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
+<!-- Inicio del bloque generado autónomamente por un agente de IA. -->
+<context>
+    <name>Pioneered</name>
+    <message>
+        <source>No track loaded</source>
+        <translation>No track loaded</translation>
+    </message>
+    <message>
+        <source>BPM %1 · Key %2</source>
+        <translation>BPM %1 · Key %2</translation>
+    </message>
+    <message>
+        <source>LOAD</source>
+        <translation>LOAD</translation>
+    </message>
+    <message>
+        <source>Keylock</source>
+        <translation>Keylock</translation>
+    </message>
+    <message>
+        <source>Quantize</source>
+        <translation>Quantize</translation>
+    </message>
+    <message>
+        <source>CUE ♫</source>
+        <translation>CUE ♫</translation>
+    </message>
+    <message>
+        <source>Pitch</source>
+        <translation>Pitch</translation>
+    </message>
+    <message>
+        <source>Loop 4</source>
+        <translation>Loop 4</translation>
+    </message>
+    <message>
+        <source>Overview</source>
+        <translation>Overview</translation>
+    </message>
+    <message>
+        <source>Browse</source>
+        <translation>Browse</translation>
+    </message>
+    <message>
+        <source>Samples</source>
+        <translation>Samples</translation>
+    </message>
+    <message>
+        <source>BeatFX</source>
+        <translation>BeatFX</translation>
+    </message>
+    <message>
+        <source>CUE / MAIN</source>
+        <translation>CUE / MAIN</translation>
+    </message>
+    <message>
+        <source>Controllers (%1)</source>
+        <translation>Controllers (%1)</translation>
+    </message>
+    <message>
+        <source>Settings</source>
+        <translation>Settings</translation>
+    </message>
+    <message>
+        <source>BeatFX · Main level</source>
+        <translation>BeatFX · Main level</translation>
+    </message>
+    <message>
+        <source>FX %1</source>
+        <translation>FX %1</translation>
+    </message>
+    <message>
+        <source>MAIN</source>
+        <translation>MAIN</translation>
+    </message>
+    <message>
+        <source>Dry / Wet</source>
+        <translation>Dry / Wet</translation>
+    </message>
+    <message>
+        <source>ON</source>
+        <translation>ON</translation>
+    </message>
+</context>
+<!-- Fin del bloque generado autónomamente por un agente de IA. -->
 </TS>

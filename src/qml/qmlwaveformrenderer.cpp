@@ -15,12 +15,14 @@
 #include "waveform/renderers/allshader/waveformrendererhsv.h"
 #include "waveform/renderers/allshader/waveformrendererpreroll.h"
 #include "waveform/renderers/allshader/waveformrendererrgb.h"
+#include "waveform/renderers/allshader/waveformrendererrgbgpu.h"
 #include "waveform/renderers/allshader/waveformrenderersignalbase.h"
 #include "waveform/renderers/allshader/waveformrenderersimple.h"
 // #include "waveform/renderers/allshader/waveformrenderertextured.h"
 #include "waveform/renderers/waveformmark.h"
 #ifdef __STEM__
 #include "waveform/renderers/allshader/waveformrendererstem.h"
+#include "waveform/renderers/allshader/waveformrendererstemgpu.h"
 #endif
 #include "waveform/renderers/allshader/waveformrendermark.h"
 #include "waveform/renderers/allshader/waveformrendermarkrange.h"
@@ -164,8 +166,14 @@ QmlWaveformRendererFactory::Renderer QmlWaveformRendererRGB::create(
                       "on scene graph backend. Ignoring";
         options ^= allshader::WaveformRendererSignalBase::Option::HighDetail;
     }
-    pRenderer.reset(new allshader::WaveformRendererRGB(
-            waveformWidget, m_position, options));
+    if (m_position == ::WaveformRendererAbstract::Play &&
+            !(options & allshader::WaveformRendererSignalBase::Option::SplitStereoSignal)) {
+        // Drawn by the GPU, see WaveformRendererRGBGpu
+        pRenderer.reset(new allshader::WaveformRendererRGBGpu(waveformWidget, options));
+    } else {
+        pRenderer.reset(new allshader::WaveformRendererRGB(
+                waveformWidget, m_position, options));
+    }
     setup(dynamic_cast<allshader::WaveformRendererSignalBase*>(pRenderer.get()));
 
     return QmlWaveformRendererFactory::Renderer{
@@ -313,40 +321,53 @@ QmlWaveformRendererFactory::Renderer QmlWaveformRendererMarkRange::create(
 QmlWaveformRendererFactory::Renderer QmlWaveformRendererStem::create(
         WaveformWidgetRenderer* waveformWidget,
         mixxx::qml::WaveformRendererSignalBaseOptions options) const {
+    // The same settings for the renderer of the GPU and of the CPU
+    auto setUp = [this](auto* pRenderer) {
+        pRenderer->setAllChannelVisualGain(m_gainAll);
+        pRenderer->setOpacity(static_cast<float>(m_opacity));
+        pRenderer->setOutlineOpacity(static_cast<float>(m_outlineOpacity));
+        pRenderer->setReorderOnChange(m_reorderOnChange);
+        pRenderer->setSplitStemTracks(m_splitStemTracks);
+        connect(this,
+                &QmlWaveformRendererStem::gainAllChanged,
+                pRenderer,
+                [pRenderer](double value) {
+                    pRenderer->setAllChannelVisualGain(value);
+                });
+        connect(this,
+                &QmlWaveformRendererStem::opacityChanged,
+                pRenderer,
+                [pRenderer](double value) {
+                    pRenderer->setOpacity(static_cast<float>(value));
+                });
+        connect(this,
+                &QmlWaveformRendererStem::outlineOpacityChanged,
+                pRenderer,
+                [pRenderer](double value) {
+                    pRenderer->setOutlineOpacity(static_cast<float>(value));
+                });
+        connect(this,
+                &QmlWaveformRendererStem::reorderOnChangeChanged,
+                pRenderer,
+                [pRenderer](bool value) {
+                    pRenderer->setReorderOnChange(value);
+                });
+        connect(this,
+                &QmlWaveformRendererStem::splitStemTracksChanged,
+                pRenderer,
+                [pRenderer](bool value) {
+                    pRenderer->setSplitStemTracks(value);
+                });
+    };
+    if (m_position == ::WaveformRendererAbstract::Play) {
+        // Drawn by the GPU, see WaveformRendererStemGpu
+        auto pRenderer = std::make_unique<allshader::WaveformRendererStemGpu>(waveformWidget);
+        setUp(pRenderer.get());
+        return QmlWaveformRendererFactory::Renderer{pRenderer.get(), std::move(pRenderer)};
+    }
     auto pRenderer = std::make_unique<allshader::WaveformRendererStem>(
             waveformWidget, m_position);
-
-    pRenderer->setAllChannelVisualGain(m_gainAll);
-    pRenderer->setOpacity(static_cast<float>(m_opacity));
-    pRenderer->setOutlineOpacity(static_cast<float>(m_outlineOpacity));
-    pRenderer->setReorderOnChange(m_reorderOnChange);
-    pRenderer->setSplitStemTracks(m_splitStemTracks);
-    connect(this,
-            &QmlWaveformRendererStem::gainAllChanged,
-            pRenderer.get(),
-            &allshader::WaveformRendererStem::setAllChannelVisualGain);
-    connect(this,
-            &QmlWaveformRendererStem::opacityChanged,
-            pRenderer.get(),
-            [renderer = pRenderer.get()](double value) {
-                renderer->setOpacity(static_cast<float>(value));
-            });
-    connect(this,
-            &QmlWaveformRendererStem::outlineOpacityChanged,
-            pRenderer.get(),
-            [renderer = pRenderer.get()](double value) {
-                renderer->setOutlineOpacity(static_cast<float>(value));
-            });
-    connect(this,
-            &QmlWaveformRendererStem::reorderOnChangeChanged,
-            pRenderer.get(),
-            [renderer = pRenderer.get()](bool value) {
-                renderer->setReorderOnChange(value);
-            });
-    connect(this,
-            &QmlWaveformRendererStem::splitStemTracksChanged,
-            pRenderer.get(),
-            &allshader::WaveformRendererStem::setSplitStemTracks);
+    setUp(pRenderer.get());
     return QmlWaveformRendererFactory::Renderer{pRenderer.get(), std::move(pRenderer)};
 }
 #endif

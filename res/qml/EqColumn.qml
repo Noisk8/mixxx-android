@@ -47,12 +47,11 @@ Column {
 
         clip: true
         currentIndex: fxSelect.value == -1 ? 0 : fxSelect.value
-        font.pixelSize: 11
-        height: 26
+        font.pixelSize: 10
         indicator.width: 0
         model: Mixxx.EffectsManager.quickChainPresetModel
         popupMaxItem: 8
-        popupWidth: 160
+        popupWidth: 100
         spacing: 2
         textRole: "display"
         width: parent.width

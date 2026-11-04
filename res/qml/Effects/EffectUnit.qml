@@ -12,7 +12,6 @@ Item {
     required property int unitNumber
 
     implicitHeight: effectContainer.height
-    height: implicitHeight
 
     Item {
         id: effectContainer
@@ -21,7 +20,7 @@ Item {
         anchors.margins: 5
         anchors.right: effectUnitControlsFrame.left
         anchors.top: parent.top
-        height: root.expanded ? 160 : 85
+        height: root.expanded ? 160 : 60
 
         EffectSlot {
             id: effect1

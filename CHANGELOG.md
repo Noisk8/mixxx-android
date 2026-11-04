@@ -2,6 +2,90 @@
 
 > Inicio del texto redactado autónomamente por un agente de IA.
 
+## Android v0.9.0 "Otto Mann" (2026-11-04)
+
+Versión preparada para revisión humana; no publicada.
+VersionCode: 19. Paquete: org.mixxx. ABI: arm64-v8a.
+Android mínimo: 10 / API 29. Target SDK: 35.
+Base de integración: JaviLabarumDJ/android-stable, 74bb3ac934 (v1.6.1).
+Comparación de publicación: android-v0.8.0.
+
+### Interfaz Pioneered y marca
+
+- Pioneered QML como skin Android predeterminado; Classic, Booth y Lite
+  siguen disponibles mediante el selector de interfaz.
+- Dos waveforms de reproducción apiladas, BeatFX lateral y dos decks
+  inferiores, con geometría explícita para evitar colapsos de ancho/alto.
+- Información de artista y título, BPM, tonalidad, tiempo transcurrido,
+  tiempo restante y duración total de cada canción.
+- Vista completa de cada track, play/cue/sync, carga al deck seleccionado,
+  keylock y preescucha.
+- Vistas Browse, Samples (16 samplers), BeatFX y DJ; la vista DJ conserva
+  mezcla táctil, jogs, pads, loops y controles de stems de Booth.
+- Logo JaqLife incluido localmente en el arranque, conservando proporciones;
+  sustituye al logo Mixxx en la pantalla de carga QML.
+- Retirada de la marca Javi del arranque; se mantienen atribuciones y créditos.
+- Traducciones españolas para la nueva interfaz.
+
+### Integración de la base Android
+
+- Incorporación de módulos C++, Java y QML de la base android-stable:
+  gestión móvil de audio, controladoras, almacenamiento y preferencias.
+- Incorporación de rutas de audio USB nativas, MIDI Android USB/Bluetooth,
+  permisos y mapeos DDJ-400/FLX4. Su funcionamiento completo en hardware
+  no está certificado por esta entrega.
+- Integración de biblioteca USB, Rekordbox y Engine DJ, copias de seguridad,
+  análisis de pistas, stems y renderizado GPU de waveforms.
+- Separación de overrides QML Android y componentes de escritorio.
+- Caché QML regenerable en almacenamiento privado: no se borra
+  /sdcard/Mixxx/qml del usuario al iniciar.
+- Actualizaciones automáticas desactivadas por defecto y origen de
+  actualizaciones apuntando a Noisk8, no al fork de la base.
+- Mezcla y biblioteca local sin servidor obligatorio. Streaming y descarga
+  inicial de modelos de stems son opcionales; los modelos no van en el APK.
+
+### Compilación y empaquetado
+
+- Integración Android en CMake y aplicación de overrides +android al empaquetar.
+- Enlace de mixxx_libccompat para símbolos requeridos en API 29 y
+  compatibilidad de dependencias Qt.
+- Eliminación de símbolos innecesarios antes del empaquetado.
+- Exclusión de androidTest del source set Java de producción; se conservan
+  los tests, sin afirmar que estén actualizados o ejecutados.
+- Conservación de la identidad org.mixxx y del certificado de firma local.
+- Versión y personaje de release actualizados conjuntamente en los metadatos.
+- APK firmado y checksum SHA-256 entregados como artefactos locales.
+- El workflow de release usa estas notas, conservando su validación de firma,
+  versión, checksum y evidencia física antes de crear un borrador.
+
+### Validación realizada y límites
+
+- En las compilaciones de desarrollo previas se verificaron instalación en
+  un teléfono Android real, arranque, navegación y distribución Pioneered.
+- Se observó una waveform de reproducción con música cargada, tiempos y BPM;
+  ambos renderizadores se inicializaron y se abrió la salida PortAudio/Oboe.
+- Se verificó visualmente el logo JaqLife en el arranque del teléfono.
+- QML nuevo comprobado con qmllint usando overrides Android.
+- Regresión local: 18 tests Python y 6 escenarios PendingMidiOpen
+  (incluidas 500 carreras de timeout) superados. El runner completo falla
+  porque referencia HardwareChanges.java, ausente en la base integrada;
+  las pruebas C++ posteriores de ese runner no llegaron a ejecutarse.
+- Estas observaciones NO equivalen a QA físico completo del APK 0.9.0,
+  ni a certificación de audio audible estable o Main/cue por controladora.
+- Pendientes: dos horas de reproducción continua, veinte reconexiones USB,
+  Main/cue, hot-plug, MIDI Bluetooth, grabación, llamadas y segundo plano.
+- Fallo conocido: SIGABRT en hwuiTask0 tras finalizar Mixxx, con mensaje
+  de mutex destruido. Se observó también un bloqueo al volver de permisos
+  con la opción Android «No conservar actividades» activada.
+- No se ha verificado el build de escritorio tras la integración.
+- El APK ronda 300 MB. Los tests instrumentados antiguos siguen pendientes.
+- No publicar como estable ni declarar superado el gate físico hasta que
+  un DJ aporte evidencia real para el SHA-256 exacto del APK.
+
+> Fin del texto redactado autónomamente por un agente de IA.
+
+> Inicio del texto redactado autónomamente por un agente de IA.
+
 ## Android v0.8.0 "Troy McClure" (2026-10-19)
 
 Codename: **Troy McClure** · `versionCode 12` · Base: Mixxx 2.7.0-alpha · `arm64-v8a` · `minSdk 35`

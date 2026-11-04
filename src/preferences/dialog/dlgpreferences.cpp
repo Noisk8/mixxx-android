@@ -8,9 +8,6 @@
 #include <QResizeEvent>
 #include <QScreen>
 #include <QScrollArea>
-#ifdef Q_OS_ANDROID
-#include <QScroller>
-#endif
 #include <QSlider>
 #include <QStyle>
 #include <QtGlobal>
@@ -70,20 +67,8 @@ DlgPreferences::DlgPreferences(
           m_pConfig(pSettingsManager->settings()),
           m_pageSizeHint(QSize(0, 0)) {
     setupUi(this);
-#ifdef Q_OS_ANDROID
-    setStyleSheet(QStringLiteral("QPushButton, QComboBox, QSpinBox, QDoubleSpinBox, QLineEdit { min-height: 44px; } QTreeView::item { min-height: 44px; } QCheckBox::indicator, QRadioButton::indicator { width: 28px; height: 28px; } QScrollBar:vertical { width: 24px; } QScrollBar:horizontal { height: 24px; }"));
-    QScroller::grabGesture(contentsTreeWidget->viewport(), QScroller::TouchGesture);
-#endif
     fixSliderStyle();
     contentsTreeWidget->setHeaderHidden(true);
-#ifdef Q_OS_ANDROID
-    horizontalLayout->setContentsMargins(4, 4, 4, 4);
-    splitter->setHandleWidth(6);
-    if (const QScreen* pScreen = mixxx::widgethelper::getScreenForWidgetOrApplication(*this)) {
-        contentsTreeWidget->setMaximumWidth(
-                std::max(100, pScreen->availableGeometry().width() / 4));
-    }
-#endif
 
     // Add '&' to default button labels to always have Alt shortcuts, indpependent
     // of operating system.
@@ -418,12 +403,6 @@ void DlgPreferences::onHide() {
 }
 
 void DlgPreferences::onShow() {
-#ifdef Q_OS_ANDROID
-    setMinimumSize(0, 0);
-    showFullScreen();
-    emit showDlg();
-    return;
-#endif
     // init m_geometry
     if (m_geometry.length() < 4) {
         // load default values (optimum size)
@@ -588,9 +567,6 @@ void DlgPreferences::addPageWidget(const PreferencesPage& page,
     // Add a new scroll area to the stacked pages widget containing the page
     QScrollArea* sa = new QScrollArea(pagesWidget);
     sa->setWidgetResizable(true);
-#ifdef Q_OS_ANDROID
-    QScroller::grabGesture(sa->viewport(), QScroller::TouchGesture);
-#endif
 
     sa->setWidget(pageCopy.pDlg);
     pagesWidget->addWidget(sa);

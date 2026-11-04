@@ -9,25 +9,25 @@ Item {
     id: root
 
     property string targetDeck: "[Channel1]"
-    property string statusMessage: qsTr("Introduce un enlace de audio directo (MP3, WAV, FLAC, stream)")
+    property string statusMessage: qsTr("Enter a direct audio link (MP3, WAV, FLAC, stream)")
     property bool isDownloading: false
 
     Connections {
         target: Mixxx.StreamingManager
 
         function onDownloadProgress(trackId, progress, bytesReceived, bytesTotal) {
-            root.statusMessage = "Descargando... " + Math.round(progress * 100) + "% (" + (bytesReceived / 1048576).toFixed(1) + " MB)";
+            root.statusMessage = qsTr("Downloading... %1% (%2 MB)").arg(Math.round(progress * 100)).arg((bytesReceived / 1048576).toFixed(1));
         }
 
         function onDownloadFinished(trackId, localPath, targetDeck, autoPlay) {
             root.isDownloading = false;
             // QmlStreamingProxy already loaded the track safely into targetDeck in C++
-            root.statusMessage = "✔ Stream descargado y cargado en " + (targetDeck === "[Channel1]" ? "DECK 1" : "DECK 2");
+            root.statusMessage = qsTr("✔ Stream downloaded and loaded into %1").arg(targetDeck === "[Channel1]" ? "DECK 1" : "DECK 2");
         }
 
         function onDownloadFailed(trackId, errorMessage) {
             root.isDownloading = false;
-            root.statusMessage = "❌ Error en el stream: " + errorMessage;
+            root.statusMessage = qsTr("❌ Stream error: %1").arg(errorMessage);
         }
     }
 
@@ -51,7 +51,7 @@ Item {
                 spacing: 10
 
                 Text {
-                    text: "🔗 URL DIRECTA / STREAMING WEB"
+                    text: qsTr("🔗 DIRECT URL / WEB STREAMING")
                     color: "#ffb300"
                     font.bold: true
                     font.pixelSize: 14
@@ -82,7 +82,7 @@ Item {
                 spacing: 8
 
                 Text {
-                    text: "Enlace URL del archivo de audio o stream:"
+                    text: qsTr("URL of the audio file or stream:")
                     color: "#ffffff"
                     font.bold: true
                     font.pixelSize: 12
@@ -92,7 +92,7 @@ Item {
                     id: customUrlInput
                     Layout.fillWidth: true
                     Layout.preferredHeight: 38
-                    placeholderText: "https://ejemplo.com/dj-set.mp3"
+                    placeholderText: qsTr("https://example.com/dj-set.mp3")
                     text: "https://cdn.freesound.org/previews/682/682245_11861866-lq.mp3"
                     color: "#ffffff"
                     font.pixelSize: 12
@@ -112,7 +112,7 @@ Item {
                         id: trackTitleInput
                         Layout.fillWidth: true
                         Layout.preferredHeight: 32
-                        placeholderText: "Título opcional (ej: Future Rave Set)"
+                        placeholderText: qsTr("Optional title (e.g. Future Rave Set)")
                         color: "#ffffff"
                         font.pixelSize: 11
                         background: Rectangle {
@@ -130,7 +130,8 @@ Item {
                         normalColor: "#ffffff"
                         font.bold: true
                         font.pixelSize: 11
-                        text: "◀ Cargar en DECK 1"
+                        arrowLeft: true
+                        text: qsTr("Load into DECK 1")
 
                         onClicked: {
                             if (!customUrlInput.text.trim()) return;
@@ -156,7 +157,8 @@ Item {
                         normalColor: "#ffffff"
                         font.bold: true
                         font.pixelSize: 11
-                        text: "Cargar en DECK 2 ▶"
+                        arrowRight: true
+                        text: qsTr("Load into DECK 2")
 
                         onClicked: {
                             if (!customUrlInput.text.trim()) return;

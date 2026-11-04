@@ -33,13 +33,11 @@ Item {
         key: root.key
     }
 
-    // TapHandler instead of MouseArea so that several of these buttons can be
-    // operated simultaneously on a touchscreen.
-    TapHandler {
+    MouseArea {
+        anchors.fill: parent
         acceptedButtons: Qt.LeftButton
         enabled: root.enabled && root.handlePointerInput
-        gesturePolicy: TapHandler.ReleaseWithinBounds
 
-        onTapped: root.cycle()
+        onClicked: root.cycle()
     }
 }

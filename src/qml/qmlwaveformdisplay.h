@@ -2,9 +2,10 @@
 
 #include <qtmetamacros.h>
 
-#include <QElapsedTimer>
 #include <QPointer>
 #include <QQuickItem>
+#include <QElapsedTimer>
+#include <atomic>
 #include <QQuickWindow>
 #include <QSGNode>
 #include <QSGSimpleRectNode>
@@ -106,6 +107,7 @@ class QmlWaveformDisplay : public QQuickItem, VSyncTimeProvider, public Waveform
     void setZoom(double zoom) {
         WaveformWidgetRenderer::setZoom(zoom);
         emit zoomChanged();
+        update();
     }
     int getFrameRate() const {
         return m_frameRate;
@@ -134,6 +136,7 @@ class QmlWaveformDisplay : public QQuickItem, VSyncTimeProvider, public Waveform
         return m_options;
     }
     void setOptions(WaveformRendererSignalBaseOptions options);
+
 
     // Recreate the scene-graph renderer stack after a setting changes which
     // renderer is enabled. The renderer factories are declared in QML, while
@@ -164,19 +167,26 @@ class QmlWaveformDisplay : public QQuickItem, VSyncTimeProvider, public Waveform
   private:
     void setCurrentTrack(TrackPointer pTrack);
     void requestUpdateAtFrameRate();
+    /// The frame interval from the refresh rate of the display and the
+    /// frame rate, see frameclock::setDisplay()
+    void updateFrameInterval();
 
     // Properties
     QPointer<QmlPlayerProxy> m_pPlayer;
     QColor m_backgroundColor{QColor(0, 0, 0, 255)};
 
     PerformanceTimer m_timer;
-    QElapsedTimer m_frameRequestTimer;
     QTimer m_frameRateTimer;
     QmlTrackProxy* m_pTrack;
     QSharedPointer<VisualPlayPosition> m_visualPlayPosition;
 
     std::chrono::microseconds m_syncInterval;
     int m_frameRate;
+    double m_lastFramePlayPos{-1.0};
+    QElapsedTimer m_lastMove;
+    /// Drawn in the frame being rendered (render thread)
+    std::atomic<bool> m_drawnInFrame{false};
+
     enum class DirtyFlag : int {
         None = 0x0,
         Geometry = 0x1,

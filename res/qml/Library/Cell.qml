@@ -8,7 +8,12 @@ Rectangle {
 
     readonly property alias dragImage: dragImageEffect
 
-    Drag.dragType: Drag.None
+    Drag.dragType: Drag.Automatic
+    Drag.mimeData: {
+        "text/uri-list": file_url.toString(),
+        "text/plain": file_url.toString()
+    }
+    Drag.supportedActions: Qt.CopyAction
     anchors.fill: parent
     color: selected ? Theme.accentColor : (row % 2 == 0 ? Theme.sunkenBackgroundColor : Theme.backgroundColor)
 

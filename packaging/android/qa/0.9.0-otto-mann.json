@@ -1,0 +1,33 @@
+{
+  "_ai_notice_start": "Registro redactado por un agente de IA a partir del testimonio del usuario; no son pruebas ejecutadas ni observadas por el agente.",
+  "version_code": 19,
+  "apk_sha256": "1c1e2aa091e227786136522773b9e4818acbb1f17529dc7668e2e6d95786de84",
+  "tester": "Noisk8",
+  "device": "Xiaomi 14 Pro (modelo declarado por el tester)",
+  "controller": "Pioneer DDJ-400",
+  "tested_at": "",
+  "reported_at": "2026-11-04",
+  "evidence": "Confirmación del usuario en esta conversación: pruebas físicas satisfactorias con Otto Mann; respondió sí a la consulta sobre al menos 2 horas, 20 reconexiones, Main/cue, pantalla apagada, segundo plano, llamadas, grabación y cierre. Confirmó DDJ-400, Xiaomi 14 Pro y alias Noisk8. No se aportaron logs, fecha de ejecución ni checksum leído del APK instalado.",
+  "duration_seconds": 7200,
+  "usb_reconnect_cycles": 20,
+  "counts_are_reported_lower_bounds": true,
+  "installed_apk_sha256_confirmed": false,
+  "cases": {
+    "rca_cue": "pass",
+    "usb_reconnect": "pass",
+    "screen_off": "pass",
+    "background": "pass",
+    "calls": "pass",
+    "notifications": "pending",
+    "long_session": "pass",
+    "touch_preferences": "pending",
+    "touch_library": "pending",
+    "storage_permissions": "pending",
+    "update_preserves_data": "pending"
+  },
+  "additional_reported_cases": {
+    "recording": "pass",
+    "closing": "pass"
+  },
+  "_ai_notice_end": "Fin del registro redactado por un agente de IA a partir del testimonio del usuario."
+}

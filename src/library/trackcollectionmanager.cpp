@@ -6,6 +6,9 @@
 #include "library/library_decl.h"
 #include "library/library_prefs.h"
 #include "library/scanner/libraryscanner.h"
+#ifdef Q_OS_ANDROID
+#include "library/androidscanorder.h"
+#endif
 #include "library/trackcollection.h"
 #include "moc_trackcollectionmanager.cpp"
 #include "sources/soundsourceproxy.h"
@@ -71,6 +74,9 @@ TrackCollectionManager::TrackCollectionManager(
         kLogger.info() << "Library scanner is disabled in test mode";
     } else {
         m_pScanner = std::make_unique<LibraryScanner>(pDbConnectionPool, pConfig);
+#ifdef Q_OS_ANDROID
+        mixxx::android::connectScanOrder(m_pScanner.get(), pDbConnectionPool);
+#endif
 
         connect(
                 m_pScanner.get(),

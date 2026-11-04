@@ -18454,4 +18454,89 @@ Please select an input device in the sound hardware preferences first.</source>
         <translation>Ningún efecto cargado.</translation>
     </message>
 </context>
+<!-- Inicio del bloque generado autónomamente por un agente de IA. -->
+<context>
+    <name>Pioneered</name>
+    <message>
+        <source>No track loaded</source>
+        <translation>Ninguna pista cargada</translation>
+    </message>
+    <message>
+        <source>BPM %1 · Key %2</source>
+        <translation>BPM %1 · Tonalidad %2</translation>
+    </message>
+    <message>
+        <source>LOAD</source>
+        <translation>CARGAR</translation>
+    </message>
+    <message>
+        <source>Keylock</source>
+        <translation>Bloquear tono</translation>
+    </message>
+    <message>
+        <source>Quantize</source>
+        <translation>Cuantizar</translation>
+    </message>
+    <message>
+        <source>CUE ♫</source>
+        <translation>CUE ♫</translation>
+    </message>
+    <message>
+        <source>Pitch</source>
+        <translation>Tempo</translation>
+    </message>
+    <message>
+        <source>Loop 4</source>
+        <translation>Bucle 4</translation>
+    </message>
+    <message>
+        <source>Overview</source>
+        <translation>Vista general</translation>
+    </message>
+    <message>
+        <source>Browse</source>
+        <translation>Explorar</translation>
+    </message>
+    <message>
+        <source>Samples</source>
+        <translation>Samples</translation>
+    </message>
+    <message>
+        <source>BeatFX</source>
+        <translation>BeatFX</translation>
+    </message>
+    <message>
+        <source>CUE / MAIN</source>
+        <translation>CUE / MAIN</translation>
+    </message>
+    <message>
+        <source>Controllers (%1)</source>
+        <translation>Controladoras (%1)</translation>
+    </message>
+    <message>
+        <source>Settings</source>
+        <translation>Ajustes</translation>
+    </message>
+    <message>
+        <source>BeatFX · Main level</source>
+        <translation>BeatFX · Nivel principal</translation>
+    </message>
+    <message>
+        <source>FX %1</source>
+        <translation>FX %1</translation>
+    </message>
+    <message>
+        <source>MAIN</source>
+        <translation>MAIN</translation>
+    </message>
+    <message>
+        <source>Dry / Wet</source>
+        <translation>Seco / Efecto</translation>
+    </message>
+    <message>
+        <source>ON</source>
+        <translation>ON</translation>
+    </message>
+</context>
+<!-- Fin del bloque generado autónomamente por un agente de IA. -->
 </TS>

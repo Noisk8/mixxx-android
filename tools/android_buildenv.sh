@@ -29,6 +29,20 @@ fi
 
 HOST_ARCH=$(uname -m)  # One of x86_64, arm64, i386, ppc or ppc64
 
+# Target ABI of the device Mixxx is built for. arm64-v8a covers phones, ARM
+# tablets and ARM Chromebooks. Other ABIs (notably x86_64 for Intel
+# Chromebooks and the emulator) require a matching vcpkg dependency tree,
+# which is not published as a prebuilt archive yet.
+[ -z "$ANDROID_ABI" ] && ANDROID_ABI="arm64-v8a"
+if [ "$ANDROID_ABI" != "arm64-v8a" ]; then
+    echo "ERROR: No prebuilt dependencies are published for ANDROID_ABI=${ANDROID_ABI}."
+    echo "Only arm64-v8a is available as a download. To target another ABI,"
+    echo "build the vcpkg environment yourself as described in:"
+    echo "https://github.com/mixxxdj/mixxx/wiki/Compiling-dependencies-for-android"
+    echo "and then configure with -DANDROID_ABI=${ANDROID_ABI}."
+    exit 1
+fi
+
 if [ "$HOST_ARCH" == "x86_64" ]; then
     if [ -n "${BUILDENV_RELEASE}" ]; then
         VCPKG_TARGET_TRIPLET="arm64-android-rel"
@@ -65,37 +79,53 @@ case "$1" in
         fi
         ;;
 
-    setup)
-        sudo apt-get update && sudo apt-get install -y --no-install-recommends -- \
-            ccache \
-            cmake \
-            make \
-            build-essential \
-            '^libxcb.*-dev' \
-            autoconf \
-            autoconf-archive \
-            bison \
-            flex \
-            google-android-cmdline-tools-13.0-installer \
-            libasound2-dev \
-            libegl1-mesa-dev \
-            libghc-resolv-dev \
-            libglu1-mesa-dev \
-            libltdl-dev \
-            libx11-xcb-dev \
-            libxi-dev \
-            libxkbcommon-dev \
-            libxkbcommon-x11-dev \
-            libxrender-dev \
-            linux-libc-dev \
-            openjdk-17-jdk \
-            pkg-config \
-            python3-jinja2
-        (yes | sudo sdkmanager --licenses) || true
-        sudo sdkmanager "platforms;android-${ANDROID_API}" "platform-tools" "build-tools;${ANDROID_VERSION}" "ndk;${ANDROID_NDK}"
-        ANDROID_SDK=/usr/lib/android-sdk
-        ANDROID_NDK_HOME=/usr/lib/android-sdk/ndk/${ANDROID_NDK}
-        JAVA_HOME=$(find /usr/lib/jvm -maxdepth 1 -name 'java-17-openjdk*')
+    setup|env)
+        if [ "$1" = "setup" ]; then
+            sudo apt-get update && sudo apt-get install -y --no-install-recommends -- \
+                ccache \
+                cmake \
+                make \
+                patchelf \
+                build-essential \
+                '^libxcb.*-dev' \
+                autoconf \
+                autoconf-archive \
+                bison \
+                flex \
+                libasound2-dev \
+                libegl1-mesa-dev \
+                libghc-resolv-dev \
+                libglu1-mesa-dev \
+                libltdl-dev \
+                libx11-xcb-dev \
+                libxi-dev \
+                libxkbcommon-dev \
+                libxkbcommon-x11-dev \
+                libxrender-dev \
+                linux-libc-dev \
+                pkg-config \
+                python3-jinja2 \
+                unzip
+            (yes | sudo sdkmanager --licenses) || true
+            sudo sdkmanager "platforms;android-${ANDROID_API}" "platform-tools" "build-tools;${ANDROID_VERSION}" "ndk;${ANDROID_NDK}" 2>/dev/null || true
+        fi
+        if [ -z "$ANDROID_SDK" ]; then
+            if [ -d "$HOME/Android/Sdk" ]; then
+                ANDROID_SDK="$HOME/Android/Sdk"
+            elif [ -d "/usr/lib/android-sdk" ]; then
+                ANDROID_SDK="/usr/lib/android-sdk"
+            elif [ -n "$ANDROID_HOME" ]; then
+                ANDROID_SDK="$ANDROID_HOME"
+            fi
+        fi
+        if [ -z "$ANDROID_NDK_HOME" ]; then
+            if [ -d "${ANDROID_SDK}/ndk/${ANDROID_NDK}" ]; then
+                ANDROID_NDK_HOME="${ANDROID_SDK}/ndk/${ANDROID_NDK}"
+            fi
+        fi
+        if [ -z "$JAVA_HOME" ]; then
+            JAVA_HOME=$(find /usr/lib/jvm -maxdepth 1 \( -name 'java-21-openjdk*' -o -name 'java-17-openjdk*' -o -name 'default-java' \) 2>/dev/null | head -n 1)
+        fi
         export ANDROID_SDK
         export ANDROID_NDK_HOME
         export JAVA_HOME
@@ -107,6 +137,7 @@ case "$1" in
         export BUILDENV_SHA256
         export MIXXX_VCPKG_ROOT="${BUILDENV_PATH}"
         export VCPKG_TARGET_TRIPLET="${VCPKG_TARGET_TRIPLET}"
+        export ANDROID_ABI="${ANDROID_ABI}"
 
         echo_exported_variables() {
             echo "ANDROID_SDK=${ANDROID_SDK}"
@@ -118,6 +149,7 @@ case "$1" in
             echo "BUILDENV_SHA256=${BUILDENV_SHA256}"
             echo "MIXXX_VCPKG_ROOT=${MIXXX_VCPKG_ROOT}"
             echo "VCPKG_TARGET_TRIPLET=${VCPKG_TARGET_TRIPLET}"
+            echo "ANDROID_ABI=${ANDROID_ABI}"
         }
 
         if [ -n "${GITHUB_ENV}" ]; then
@@ -127,7 +159,7 @@ case "$1" in
             echo "Exported environment variables:"
             echo_exported_variables
             echo "You can now configure cmake from the command line in an EMPTY build directory via:"
-            echo "cmake -DCMAKE_TOOLCHAIN_FILE=${MIXXX_VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake -DCMAKE_SYSTEM_NAME=Android ${MIXXX_ROOT}"
+            echo "cmake -DCMAKE_TOOLCHAIN_FILE=${MIXXX_VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake -DCMAKE_SYSTEM_NAME=Android -DANDROID_ABI=${ANDROID_ABI} ${MIXXX_ROOT}"
         fi
         ;;
     *)

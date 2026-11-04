@@ -49,8 +49,15 @@ class SoundManagerConfig {
 
     static constexpr auto kMaxAudioBufferSizeIndex =
             static_cast<unsigned int>(AudioBufferSizeIndex::Size80xms);
+#ifdef Q_OS_ANDROID
+    // AAudio/Oboe add their own buffering on top, so a smaller engine buffer
+    // still plays without dropouts while keeping the latency usable for DJing.
+    static constexpr auto kDefaultAudioBufferSizeIndex =
+            static_cast<unsigned int>(AudioBufferSizeIndex::Size10xms);
+#else
     static constexpr auto kDefaultAudioBufferSizeIndex =
             static_cast<unsigned int>(AudioBufferSizeIndex::Size20xms);
+#endif
 
     static const QString kAPINone;
     static const QString kEmptyComboBox;

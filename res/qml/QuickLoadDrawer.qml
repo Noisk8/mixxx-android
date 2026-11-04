@@ -83,7 +83,7 @@ Popup {
                 }
 
                 Text {
-                    text: qsTr("Cargar pista en ") + root.deckName
+                    text: qsTr("Load track into %1").arg(root.deckName)
                     color: "#ffffff"
                     font.bold: true
                     font.pixelSize: 14
@@ -98,7 +98,7 @@ Popup {
                     normalColor: root.isDeck1 ? "#ffb74d" : "#80d8ff"
                     font.bold: true
                     font.pixelSize: 10
-                    text: root.isDeck1 ? "IR A DECK 2" : "IR A DECK 1"
+                    text: root.isDeck1 ? qsTr("GO TO DECK 2") : qsTr("GO TO DECK 1")
                     onClicked: {
                         root.targetDeck = root.isDeck1 ? "[Channel2]" : "[Channel1]";
                     }
@@ -115,7 +115,7 @@ Popup {
                     normalColor: root.activeTab === 0 ? "#00e5ff" : "#90a4ae"
                     font.bold: true
                     font.pixelSize: 10
-                    text: "MÚSICA LOCAL"
+                    text: qsTr("LOCAL MUSIC")
                     onClicked: root.activeTab = 0
                 }
 
@@ -127,7 +127,7 @@ Popup {
                     normalColor: root.activeTab === 1 ? "#00ffff" : "#80deea"
                     font.bold: true
                     font.pixelSize: 10
-                    text: "STREAMING HUB"
+                    text: qsTr("STREAMING HUB")
                     onClicked: root.activeTab = 1
                 }
 
@@ -140,7 +140,7 @@ Popup {
                     normalColor: "#ffffff"
                     font.bold: true
                     font.pixelSize: 10
-                    text: "CERRAR"
+                    text: qsTr("CLOSE")
                     onClicked: root.close()
                 }
             }
@@ -166,7 +166,7 @@ Popup {
                         spacing: 10
 
                         Text {
-                            text: qsTr("Colección local de pistas")
+                            text: qsTr("Local track collection")
                             color: "#b0bec5"
                             font.bold: true
                             font.pixelSize: 12
@@ -182,7 +182,7 @@ Popup {
                             normalColor: "#80d8ff"
                             font.bold: true
                             font.pixelSize: 11
-                            text: "📂 Abrir Vista Completa de Librería"
+                            text: qsTr("📂 Open full library view")
                             onClicked: {
                                 root.close();
                                 if (typeof root.parent?.viewMode !== "undefined") {

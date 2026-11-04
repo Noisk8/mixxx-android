@@ -9,6 +9,9 @@ Item {
     required property string group
     required property string key
     property string color: "white"
+    // Minimum time in milliseconds between two moves of the marker, see
+    // Mixxx.ControlProxy.updateInterval (0: every change of the control)
+    property int updateInterval: 0
 
     Shape {
         id: shape
@@ -41,6 +44,7 @@ Item {
 
         group: root.group
         key: root.key
+        updateInterval: root.updateInterval
         onValueChanged: (value) => {
             // Math.round saves tons of CPU by avoiding redrawing for fractional pixel positions.
             marker.x = Math.round(root.width * value * Screen.devicePixelRatio) / Screen.devicePixelRatio;

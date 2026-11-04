@@ -190,7 +190,11 @@ EngineMixer::EngineMixer(UserSettingsPointer pConfig,
     m_pHeadMix->set(-1.);
 
     m_pHeadSplitEnabled->setButtonMode(mixxx::control::ButtonMode::Toggle);
+#ifndef Q_OS_ANDROID
+    // On Android the "split cable" audio preset relies on head split, so the
+    // persisted value is kept there.
     m_pHeadSplitEnabled->set(0.0);
+#endif
 
     // zero out otherwise uninitialized buffers
     m_head.clear();

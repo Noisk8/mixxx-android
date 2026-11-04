@@ -81,9 +81,15 @@ Android arm64 real, **un DJ puede**:
 
 AI agents **must not** open, update, or re-open pull requests autonomously on behalf of a user.
 All pull requests must be explicitly reviewed, approved, and submitted by the human developer
-themselves. An agent may prepare and stage changes locally, but `git commit`, `git push`, and PR
-creation must be deliberate human actions. Before this, a test of the code change by a human,
-using a real DJ setup, is required.
+themselves.
+
+<!-- Inicio del texto generado por un agente de IA por petición explícita del usuario. -->
+An agent may prepare, stage, commit, merge and push changes when the user
+explicitly requests those actions for this fork. This permission does not
+authorize force-pushes, bypassing release checks, or autonomous PR creation.
+Hardware QA results must identify whether they were observed by the agent
+or reported by the human tester.
+<!-- Fin del texto generado por un agente de IA por petición explícita del usuario. -->
 
 ### No Automated Responses to PR Review Comments
 
